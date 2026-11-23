@@ -1,0 +1,78 @@
+// @version:1
+global ToolEffects = [];
+
+global ToolsCost = [];
+global ToolCooldown = [];
+global IsWeaponTab = [];
+
+global AllWeapons = [];
+global AllChips = [];
+
+function IsCooldown(tool)
+{
+	return (ToolCooldown[tool] == null) ?  false : ToolCooldown[tool];
+}
+
+function getCost(tool) 
+{ 
+	return (ToolsCost[tool] == null) ?  100000 : ToolsCost[tool]; 
+}
+
+function fillOptiTabs(AllLeeks)
+{
+	var Treated = [];
+	
+	for(var leek in AllLeeks)
+	{
+		var leekChips = getChips(leek);
+		var leekWeaps = getWeapons(leek);
+		FillWeaponsEffects(leekWeaps, @Treated);
+		FillChipsEffects(leekChips, @Treated);
+		AllWeapons[leek] = leekWeaps;
+		AllChips[leek] = leekChips;
+	}
+	
+	for(var tool : var i in Treated)
+	{
+		if(isWeapon(tool))
+		{
+			ToolsCost[tool] = getWeaponCost(tool);
+			IsWeaponTab[tool] = true;
+			ToolCooldown[tool] = false;
+		}
+		else if(isChip(tool))
+		{
+			ToolsCost[tool] = getChipCost(tool);
+			IsWeaponTab[tool] = false;
+			if(getChipCooldown(tool) == 0)
+				ToolCooldown[tool] = false;
+			else
+				ToolCooldown[tool] = true;
+			//debug(getChipName(tool) + " cool : " + ToolCooldown[tool] + " cost : " + ToolsCost[tool]);
+		}
+	}
+}
+
+function FillWeaponsEffects(weapons, @TreatedWeapons)
+{
+	for(var weapon in weapons)
+	{
+		if(TreatedWeapons[weapon] == null)
+		{	//not already tested
+			TreatedWeapons[weapon] = true;
+			ToolEffects[weapon] = getWeaponEffects(weapon);
+		}
+	}
+}
+
+function FillChipsEffects(chips, @TreatedChips)
+{
+	for(var chip in chips)
+	{
+		if(TreatedChips[chip] == null)
+		{	//not already tested
+			TreatedChips[chip] = true;
+			ToolEffects[chip] = getChipEffects(chip);
+		}
+	}
+}

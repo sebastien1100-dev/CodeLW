@@ -1,0 +1,241 @@
+// @version:1
+	include("/Generals/Include");
+	include("Combos");
+	include("Common");
+	include("Stats");
+	include("Fill tabs");
+	
+	
+	global ThisTurnAbs = 0;
+	global ThisTurnRela =0;
+	
+	global MyChips = [];
+	global MyWeapons = [];
+	global MyStats = [];
+	
+	global EnemiesLeek=[];
+	global EnemiesBulb = [];
+	global EnemiesStats = [];
+	global EnemyAccessCells = [];
+	global EnemiesChips = [];
+	global EnemiesWeap  = [];
+	
+	global EnAffectCells = [];
+	
+	global CellsFromWhereToCombo = [];
+	global MyLeek = getLeek();
+	
+	global debugPercent = false;
+	
+	LeekEnemies(false);			//fill the tab with enemies leek (alive)
+	
+	if(getTurn() == 1)	//first turn, initiate everything
+		Initiate(false, false);	
+	
+	var PrevOps = DispOpsPercent("Initiate finish ", getOperations()/OPERATIONS_LIMIT);
+	
+	
+	//var Atteignables = CellAccess(MyLeek, getMP());
+	//mark(Atteignables, COLOR_BLUE);
+	
+	//debug(ReachableAssociative[MyLeek]);
+	accessible(MyLeek, getMP());
+	
+	MiseAJourStats();		//met les stats a jour
+	FillAllTabs(EnemiesLeek, false, false);	//fill the area tabs of chips and weapons
+	if(debugPercent)
+		PrevOps += DispOpsPercent("Fill Weap Chips Area ", PrevOps);
+	
+	for(var En in EnemiesLeek)
+		EnemyAccessCells[En] = CellAccess(En, getMP(En));
+	if(debugPercent)
+		PrevOps += DispOpsPercent("Fill enemies access ", PrevOps);	
+	
+	
+	while (FightMyself) {
+		accessible(MyLeek, getMP());
+	}
+	
+	
+	var Usable = AllUsables(MyLeek, EnemiesLeek);
+	
+	var nearEn = getNearestEnemy();
+	
+	if(getPath(getCell(MyLeek), getCell(nearEn)) != null){
+		while (Usable == [] && getMP()!=0) {
+			nearEn = getNearestEnemy();
+			moveToward(nearEn, 1);
+			accessible(MyLeek, getMP());
+			Usable = AllUsables(MyLeek, EnemiesLeek);
+		}
+	}
+	//say(getWeapons() + "   " + getChips());
+	
+	if(debugPercent)
+		PrevOps += DispOpsPercent("Calc Usables ", PrevOps);
+	debug("Usables : " + Usable);
+	
+	FillCellArrays(Usable, MyLeek);
+	//FillCellArrays(Usable, Atteignables);	//fill all the cells from where to use weapon and chips.
+	
+	if(debugPercent)
+		PrevOps += DispOpsPercent("Fill cell array ", PrevOps);	
+		
+		
+	//debug("Affect cells " + EnAffectCells);
+	PrevOps = round((getOperations()/OPERATIONS_LIMIT *100)*1000 )/1000;
+	
+	if(MyChips["Regeneration"]!=[] && getLife() < 300) {
+		debugE(getLife() + " Use Regen 1 " + getTurn());
+		useChip(MyChips["Regeneration"][0], MyLeek);
+		debugE(getLife() + "Use Regen 2 " + getTurn());
+	}
+	
+	if(getLife() < getTotalLife()/4)
+		for(var chip in MyChips["Heal"])
+			useChip(chip, MyLeek);
+	
+	var near = getNearestEnemy();	
+	autoLiberateIfNeeded();
+	
+	
+	if(ThisTurnRela < getRelativeShield() || MyStats["relaBouc"] == 0 && (getTurn()>1 || Usable != null))
+	{
+		for(var chip in MyChips["RelaShield"])
+		{
+			useChip(chip, MyLeek);
+			ThisTurnRela = getRelativeShield();
+		}
+	}
+	
+	
+	
+	
+	
+	
+	var dead = getDeadAllies();
+	debug( "dead ally : " + dead);
+	if(count(dead) > 0 && getTurn() > 6)
+	{
+		debug("Try res");
+		var highLlv = 0;
+		var AllToSave = 0;
+		for(var All in dead)
+		{
+			if(!isSummon(All) && getLevel(All) > highLlv)
+			{
+				highLlv = getLevel(All);
+				AllToSave = All;
+			}
+		}
+		debug("All to save " + getName(AllToSave));
+		var cellsToRes = [];
+		MygetCellsToUseChip(CHIP_RESURRECTION, getCell() , @[@cellsToRes, getCell()]);
+		debug("Res cells : " + cellsToRes);
+		
+		resurrect(AllToSave, FarestCell(getCell(getNearestEnemy()), cellsToRes) );
+	}
+	
+	
+	
+	
+	
+	if(ThisTurnRela < getAbsoluteShield() || MyStats["absoBouc"] == 0 && (getTurn()>1 || Usable != null))
+		for(var chip in MyChips["AbsoShield"])
+		{
+			useChip(chip, MyLeek);
+			ThisTurnRela = getAbsoluteShield();
+		}
+			
+	if(getLife() < getTotalLife()/(1.5))
+		for(var chip in MyChips["Heal"])
+			useChip(chip, MyLeek);
+	
+	
+	var Combos = [];
+	Combos = tools2Combo( Usable, getTP(), getWeapon());
+	
+	if(debugPercent)
+		PrevOps += DispOpsPercent("After combos ", PrevOps);
+	
+	//debug("Combos : " + Combos);
+	
+	
+	
+
+	
+	nearEn = getNearestEnemy();
+	var ActWeap = getWeapon();
+	
+	var CombToUse = GetBestCombo(Combos, ActWeap, nearEn);
+	if(CombToUse == null)
+	{
+		var DamReturn = 0;
+		for(var effe in getEffects(nearEn))
+		{
+			if(effe[0] == EFFECT_DAMAGE_RETURN)
+			{
+				DamReturn = effe[1]/100;
+				
+				if(effe[3] > 1 && DamReturn>0.2)
+					useChip(CHIP_LIBERATION, nearEn);
+				break;
+			}
+		}
+		CombToUse = GetBestCombo(Combos, ActWeap, nearEn);
+	}
+	
+	ExecuteCombo(CombToUse, ActWeap, nearEn);
+	DispOpsPercent("Fin Actions ", PrevOps);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	if(getTurn() > 2 && MyChips["DamageReturn"] != [])
+		useChip(MyChips["DamageReturn"][0], MyLeek);
+	
+	if(MyChips["BoostHeal"] != [])
+		useChip(MyChips["BoostHeal"][0], MyLeek);
+
+	var cellToHide = HideCells(getLeek(), getEnemies());
+	if(cellToHide != -1)
+		moveTowardCell(cellToHide);
+		
+	//mark(CellsFromWhereToCombo, getColor(0, 100, 200));
+	debugW(getTurn() + " : tp : " + getTP() + " / " + getTotalTP());
+	
+	
+	DispOpsPercent("End of Turn", 0);
+	debugW(" ");
+	//pause();
+	
+	
+	function HideCells(leek, LeekToEvitList)
+	{
+		accessible(leek, getMP(leek));
+		
+		var HideCellsTab = [];
+		for(var cell:var mp in ReachableAssociative[leek])
+		{
+			var IsGoodCell = true;
+			for(var En in LeekToEvitList)
+				for(var EnCell:var EnMp in ReachableAssociative[En])
+				{
+					if(lineOfSight(cell, EnCell))
+						IsGoodCell = false;
+				}
+			if(IsGoodCell)
+				push(HideCellsTab, cell);
+		}
+		
+		mark(HideCellsTab, COLOR_GREEN);
+		return NearestCell(getCell(), HideCellsTab);
+	}
+	
+/*

@@ -1,0 +1,960 @@
+// @version:1
+global ObstacleMap = [];
+global AllUnitPos = [];
+
+function setObstaclesMap(){
+    var obstacles = getObstacles();
+    for (var cell in obstacles)
+        ObstacleMap[cell] = true;
+}
+
+function FillLeekPos(Units)
+{	//set all positions exept mine
+	AllUnitPos = [];
+	for (var Un in Units)
+		AllUnitPos[getCell(Un)] = Un;
+}
+
+function MyIsLeek(cell)
+{
+	return (AllUnitPos[cell] == null) ? false : true;  
+}
+function MyIsObstacle(cell)
+{
+	 return (ObstacleMap[cell] == null && cell!=null) ? false : true;  
+}
+
+function MygetCellsToUseWeapon(weapon, LeekCell, @CellsToUse)
+{	//cells to use : [0] > reference Stockage
+	//				 [1] > ThisLeek
+	var Cell_X = getCellX(LeekCell);
+	var Cell_Y = getCellY(LeekCell);
+	var MyCell = getCell(CellsToUse[1]);
+
+	if(getWeaponArea(weapon) == AREA_LASER_LINE)
+	{	//weapon is a laser
+		var MaxRange = getWeaponMaxRange(weapon);
+		var MinRange = getWeaponMinRange(weapon);	
+		
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+	}
+	else
+	{
+		if(weapon != WEAPON_BROADSWORD && weapon != WEAPON_AXE && weapon != WEAPON_KATANA)
+		{
+			var MaxRange = getWeaponMaxRange(weapon);
+			var MinRange = getWeaponMinRange(weapon);	
+			
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X, Cell_Y-i);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X+i, Cell_Y);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X-i, Cell_Y);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange)
+					push(@CellsToUse[0], cell);
+			}
+			
+			if(weapon != WEAPON_SHOTGUN && weapon != WEAPON_GAZOR && weapon != WEAPON_MACHINE_GUN)
+			{
+				for (var x = 1; x <= MaxRange; x++) {
+					for (var y = 1; y <= MaxRange; y++) {
+						if(x+y <= MaxRange && x+y >= MinRange)
+						{	//4 cases a tester
+							var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+							if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+							if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+							if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+							if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+						}
+							
+					}
+				}
+			}
+		}
+		else
+		{	//CAC
+			var cell = getCellFromXY(Cell_X, Cell_Y+1);
+			if(!isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X+1, Cell_Y);
+			if(!isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X, Cell_Y-1);
+			if(!isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X-1, Cell_Y);
+			if(!isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+		}
+	}
+}
+
+
+
+function MygetCellsToUseChip(chip, LeekCell, @CellsToUse)
+{	//seulement le cas des puces dommages
+	var Cell_X = getCellX(LeekCell);
+	var Cell_Y = getCellY(LeekCell);
+	var MyCell = getCell(CellsToUse[1]);
+	
+	if(chip == CHIP_FLASH || chip == CHIP_LIGHTNING || chip == CHIP_ICEBERG)
+	{	//chips avec orientation "laser"
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+		
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+	}
+	else if(chip != CHIP_SPARK)
+	{	//Zone sans passer a travers
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+			
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange)
+				push(@CellsToUse[0], cell);
+		}
+			
+		for (var x = 1; x <= MaxRange; x++) {
+			for (var y = 1; y <= MaxRange; y++) {
+				if(x+y <= MaxRange && x+y >= MinRange)
+				{	//4 cases a tester
+					var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+						push(@CellsToUse[0], cell);
+							
+					cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+						push(@CellsToUse[0], cell);
+				}
+			}
+		}
+	}
+	else
+	{	//spark
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);
+			if (!MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (!MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+			
+			cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (!MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+			
+			cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (!MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+			
+		}			
+		for (var x = 1; x <= MaxRange; x++) {
+			for (var y = 1; y <= MaxRange; y++) {
+				if(x+y <= MaxRange && x+y >= MinRange)
+				{	//4 cases a tester
+					var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+						
+					cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+						
+					cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+					if(!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+				}
+					
+			}
+		}
+	}
+}
+
+
+
+
+function getCellsToUseWeaponAccount(weapon, LeekCell, @CellsToUse)
+{	//cells to use : [0] > reference Stockage
+	//				 [1] > ThisLeek
+	//				 [2] > Cells To Account
+	var Cell_X = getCellX(LeekCell);
+	var Cell_Y = getCellY(LeekCell);
+	var MyCell = getCell(CellsToUse[1]);
+
+	if(getWeaponArea(weapon) == AREA_LASER_LINE)
+	{	//weapon is a laser
+		var MaxRange = getWeaponMaxRange(weapon);
+		var MinRange = getWeaponMinRange(weapon);	
+		
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+	}
+	else
+	{
+		if(weapon != WEAPON_BROADSWORD && weapon != WEAPON_AXE && weapon != WEAPON_KATANA)
+		{
+			var MaxRange = getWeaponMaxRange(weapon);
+			var MinRange = getWeaponMinRange(weapon);	
+			
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X, Cell_Y-i);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X+i, Cell_Y);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X-i, Cell_Y);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell)
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			
+			if(weapon != WEAPON_SHOTGUN && weapon != WEAPON_GAZOR && weapon != WEAPON_MACHINE_GUN)
+			{
+				for (var x = 1; x <= MaxRange; x++) {
+					for (var y = 1; y <= MaxRange; y++) {
+						if(x+y <= MaxRange && x+y >= MinRange)
+						{	//4 cases a tester
+							var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+						}
+							
+					}
+				}
+			}
+		}
+		else
+		{	//CAC
+			var cell = getCellFromXY(Cell_X, Cell_Y+1);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X+1, Cell_Y);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X, Cell_Y-1);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X-1, Cell_Y);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+		}
+	}
+}
+
+
+
+function getCellsToUseChipAccount(chip, LeekCell, @CellsToUse)
+{	//seulement le cas des puces dommages
+	var Cell_X = getCellX(LeekCell);
+	var Cell_Y = getCellY(LeekCell);
+	var MyCell = getCell(CellsToUse[1]);
+	var Leek = getLeekOnCell(LeekCell);
+	
+	if(chip == CHIP_FLASH || chip == CHIP_LIGHTNING || chip == CHIP_ICEBERG)
+	{	//chips avec orientation "laser"
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+		
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+	}
+	else if(chip != CHIP_SPARK)
+	{	//Zone sans passer a travers
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+			
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell)
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+			
+		for (var x = 1; x <= MaxRange; x++) {
+			for (var y = 1; y <= MaxRange; y++) {
+				if(x+y <= MaxRange && x+y >= MinRange)
+				{	//4 cases a tester
+					var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+							
+					cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null &&!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+				}
+			}
+		}
+	}
+	else
+	{	//spark
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+			
+			cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+			
+			cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && i >= MinRange && (cell == MyCell || !MyIsLeek(cell)) )
+				push(@CellsToUse[0], cell);
+			
+		}			
+		for (var x = 1; x <= MaxRange; x++) {
+			for (var y = 1; y <= MaxRange; y++) {
+				if(x+y <= MaxRange && x+y >= MinRange)
+				{	//4 cases a tester
+					var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+						
+					cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+						
+					cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)))
+						push(@CellsToUse[0], cell);
+				}
+					
+			}
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+function getCellsToUseWeaponIgnore(weapon, LeekCell, @CellsToUse)
+{	//cells to use : [0] > reference Stockage
+	//				 [1] > ThisLeek
+	//				 [2] > Cells To Account
+	//				 [3] > CellToIgnore
+	var Cell_X = getCellX(LeekCell);
+	var Cell_Y = getCellY(LeekCell);
+	var MyCell = getCell(CellsToUse[1]);
+
+	if(getWeaponArea(weapon) == AREA_LASER_LINE)
+	{	//weapon is a laser
+		var MaxRange = getWeaponMaxRange(weapon);
+		var MinRange = getWeaponMinRange(weapon);	
+		
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+	}
+	else
+	{
+		if(weapon != WEAPON_BROADSWORD && weapon != WEAPON_AXE && weapon != WEAPON_KATANA)
+		{
+			var MaxRange = getWeaponMaxRange(weapon);
+			var MinRange = getWeaponMinRange(weapon);	
+			
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X, Cell_Y-i);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X+i, Cell_Y);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			for (var i = 1; i <= MaxRange; i++) {
+				var cell = getCellFromXY(Cell_X-i, Cell_Y);
+				if (MyIsObstacle(cell))
+					break;
+				else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+					break;
+				else if(i >= MinRange && CellsToUse[2][cell] != null)
+					push(@CellsToUse[0], cell);
+			}
+			
+			if(weapon != WEAPON_SHOTGUN && weapon != WEAPON_GAZOR && weapon != WEAPON_MACHINE_GUN)
+			{
+				for (var x = 1; x <= MaxRange; x++) {
+					for (var y = 1; y <= MaxRange; y++) {
+						if(x+y <= MaxRange && x+y >= MinRange)
+						{	//4 cases a tester
+							var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+							
+							cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+							if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)) && lineOfSight(cell, LeekCell))
+								push(@CellsToUse[0], cell);
+						}
+							
+					}
+				}
+			}
+		}
+		else
+		{	//CAC
+			var cell = getCellFromXY(Cell_X, Cell_Y+1);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X+1, Cell_Y);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X, Cell_Y-1);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X-1, Cell_Y);
+			if(CellsToUse[2][cell] != null && !isObstacle(cell) && (cell == MyCell || cell == CellsToUse[3] || !MyIsLeek(cell)))
+				push(@CellsToUse[0], cell);
+		}
+	}
+}
+
+
+
+
+function getCellsToUseChipIgnore(chip, LeekCell, @CellsToUse)
+{	//seulement le cas des puces dommages
+	var Cell_X = getCellX(LeekCell);
+	var Cell_Y = getCellY(LeekCell);
+	var MyCell = getCell(CellsToUse[1]);
+	var Leek = getLeekOnCell(LeekCell);
+	
+	if(chip == CHIP_FLASH || chip == CHIP_LIGHTNING || chip == CHIP_ICEBERG)
+	{	//chips avec orientation "laser"
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+		
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+	}
+	else if(chip != CHIP_SPARK)
+	{	//Zone sans passer a travers
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+			
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y+i);				
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (MyIsObstacle(cell))
+				break;
+			else if(MyIsLeek(cell) && cell != MyCell && cell != CellsToUse[3])
+				break;
+			else if(i >= MinRange && CellsToUse[2][cell] != null)
+				push(@CellsToUse[0], cell);
+		}
+			
+		for (var x = 1; x <= MaxRange; x++) {
+			for (var y = 1; y <= MaxRange; y++) {
+				if(x+y <= MaxRange && x+y >= MinRange)
+				{	//4 cases a tester
+					var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell) || cell == CellsToUse[3]) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+							
+					cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null &&!MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell) || cell == CellsToUse[3]) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell) || cell == CellsToUse[3]) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell) || cell == CellsToUse[3]) && lineOfSight(cell, LeekCell, Leek))
+						push(@CellsToUse[0], cell);
+				}
+			}
+		}
+	}
+	else
+	{	//spark
+		var MaxRange = getChipMaxRange(chip);
+		var MinRange = getChipMinRange(chip);	
+		//lignes
+		for (var i = 1; i <= MaxRange; i++) {
+			var cell = getCellFromXY(Cell_X, Cell_Y + i);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)  || cell == CellsToUse[3]))
+				push(@CellsToUse[0], cell);
+				
+			cell = getCellFromXY(Cell_X, Cell_Y-i);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)  || cell == CellsToUse[3]))
+				push(@CellsToUse[0], cell);
+			
+			cell = getCellFromXY(Cell_X+i, Cell_Y);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)  || cell == CellsToUse[3]))
+				push(@CellsToUse[0], cell);
+			
+			cell = getCellFromXY(Cell_X-i, Cell_Y);
+			if (CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)  || cell == CellsToUse[3]))
+				push(@CellsToUse[0], cell);
+			
+		}
+		//zone
+		for (var x = 1; x <= MaxRange; x++) {
+			for (var y = 1; y <= MaxRange; y++) {
+				if(x+y <= MaxRange && x+y >= MinRange)
+				{	//4 cases a tester
+					var cell = getCellFromXY(Cell_X + x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell)  || cell == CellsToUse[3]))
+						push(@CellsToUse[0], cell);
+					
+					cell = getCellFromXY(Cell_X + x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell) || cell == CellsToUse[3]))
+						push(@CellsToUse[0], cell);
+						
+					cell = getCellFromXY(Cell_X - x, Cell_Y - y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell) || cell == CellsToUse[3]))
+						push(@CellsToUse[0], cell);
+						
+					cell = getCellFromXY(Cell_X - x, Cell_Y + y);
+					if(CellsToUse[2][cell] != null && !MyIsObstacle(cell) && (cell == MyCell || !MyIsLeek(cell) || cell == CellsToUse[3]))
+						push(@CellsToUse[0], cell);
+				}
+					
+			}
+		}
+	}
+}

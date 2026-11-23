@@ -1,0 +1,181 @@
+// @version:1
+global cells_voisins = [];
+global ReachableAssociative = [];
+
+include("General Usefull");
+
+function CellAccess(Leek, MP)
+{		//accessible cells
+	var Atteignables = [];
+	accessible(Leek, MP);
+	
+	for( var Tempo:var I in ReachableAssociative[Leek] )
+		push(Atteignables, Tempo);
+	push(Atteignables, getCell(Leek));
+	return Atteignables;
+}
+
+function accessible(Leek, max_mp)
+//Leek is the leep, max_mp is the nb of mp
+{
+	ReachableAssociative[Leek] = [];
+	var c_dep = getCell(Leek);
+	var queue = [];
+	queue[c_dep] = 1;	//cells to explore
+	var queue_bis = [];
+	for(var mp = 0; mp<= max_mp; mp++)
+	{	//loop until we reach the limit
+		for(var cell : var _A in queue)
+		{	//for each cell in the queue (aka test all the new cells)
+			ReachableAssociative[Leek][cell] = [];
+			ReachableAssociative[Leek][cell][0] = mp;
+			if(mp == max_mp)	//if we are at max mp, dont need to chexk the neightbours
+				continue;
+			for(var c_voisin in cells_voisins[cell])
+			{	//check the neightbours and add them to the next queue
+				if(ReachableAssociative[Leek][c_voisin] == null && (!queue[c_voisin] || !queue_bis[c_voisin]) && !isLeek(c_voisin))	//if this cell is accessible
+					queue_bis[c_voisin] = mp+1;
+			}
+		}
+		queue = queue_bis;
+		queue_bis = [];
+	}
+	//On va regarder maintenant ceux qui sont à la périphérie. 
+	//access[c][1] = 0 : à l'intérieur
+	//access[c][1] = 1 : à la frontière
+	for(var cell : var c_info in ReachableAssociative[Leek])
+	{
+		ReachableAssociative[Leek][cell][1] = 0;
+		for(var c_voisins in cells_voisins[cell])
+		{
+			if(!ReachableAssociative[Leek][c_voisins])
+				ReachableAssociative[Leek][cell][1] = 1;
+		}
+	}
+}
+
+function accessibleIgnoreLeeks(Leek, max_mp)
+//Leek is the leep, max_mp is the nb of mp
+{
+	ReachableAssociative[Leek] = [];
+	var c_dep = getCell(Leek);
+	var queue = [];
+	queue[c_dep] = 1;	//cells to explore
+	var queue_bis = [];
+	for(var mp = 0; mp<= max_mp; mp++)
+	{	//loop until we reach the limit
+		for(var cell : var _A in queue)
+		{	//for each cell in the queue (aka test all the new cells)
+			ReachableAssociative[Leek][cell] = [];
+			ReachableAssociative[Leek][cell][0] = mp;
+			if(mp == max_mp)	//if we are at max mp, dont need to chexk the neightbours
+				continue;
+			for(var c_voisin in cells_voisins[cell])
+			{	//check the neightbours and add them to the next queue
+				if(ReachableAssociative[Leek][c_voisin] == null && (!queue[c_voisin] || !queue_bis[c_voisin]))	//if this cell is accessible
+					queue_bis[c_voisin] = mp+1;
+			}
+		}
+		queue = queue_bis;
+		queue_bis = [];
+	}
+	//On va regarder maintenant ceux qui sont à la périphérie. 
+	//access[c][1] = 0 : à l'intérieur
+	//access[c][1] = 1 : à la frontière
+	for(var cell : var c_info in ReachableAssociative[Leek])
+	{
+		ReachableAssociative[Leek][cell][1] = 0;
+		for(var c_voisins in cells_voisins[cell])
+		{
+			if(!ReachableAssociative[Leek][c_voisins])
+				ReachableAssociative[Leek][cell][1] = 1;
+		}
+	}
+}
+
+
+function accessibleIgnore(Leek, max_mp, CellToIgnore)
+//Leek is the leep, max_mp is the nb of mp
+{
+	ReachableAssociative[Leek] = [];
+	var c_dep = getCell(Leek);
+	var queue = [];
+	queue[c_dep] = 1;	//cells to explore
+	var queue_bis = [];
+	for(var mp = 0; mp<= max_mp; mp++)
+	{	//loop until we reach the limit
+		for(var cell : var _A in queue)
+		{	//for each cell in the queue (aka test all the new cells)
+			ReachableAssociative[Leek][cell] = [];
+			ReachableAssociative[Leek][cell][0] = mp;
+			if(mp == max_mp)	//if we are at max mp, dont need to chexk the neightbours
+				continue;
+			for(var c_voisin in cells_voisins[cell])
+			{	//check the neightbours and add them to the next queue
+				if(ReachableAssociative[Leek][c_voisin] == null && (!queue[c_voisin] || !queue_bis[c_voisin]) && ( !isLeek(c_voisin) || CellToIgnore == c_voisin ))	//if this cell is accessible
+					queue_bis[c_voisin] = mp+1;
+			}
+		}
+		queue = queue_bis;
+		queue_bis = [];
+	}
+	//On va regarder maintenant ceux qui sont à la périphérie. 
+	//access[c][1] = 0 : à l'intérieur
+	//access[c][1] = 1 : à la frontière
+	for(var cell : var c_info in ReachableAssociative[Leek])
+	{
+		ReachableAssociative[Leek][cell][1] = 0;
+		for(var c_voisins in cells_voisins[cell])
+		{
+			if(!ReachableAssociative[Leek][c_voisins])
+				ReachableAssociative[Leek][cell][1] = 1;
+		}
+	}
+}
+
+
+function FillNeightCells()
+{
+	var voisins = [];
+	for(var i = 0 ; i < 613; i++)
+	{
+		cells_voisins[i] = [];
+		var x = getCellX(i);
+		var y = getCellY(i);
+		
+		var test_cell;
+		test_cell = getCellFromXY(x+1, y);
+		if(test_cell && !isObstacle(test_cell))
+			push(voisins, test_cell);
+			
+		test_cell = getCellFromXY(x-1, y);
+		if(test_cell && !isObstacle(test_cell))
+			push(voisins, test_cell);
+
+		test_cell = getCellFromXY(x, y+1);
+		if(test_cell && !isObstacle(test_cell))
+			push(voisins, test_cell);
+				
+		test_cell = getCellFromXY(x, y-1);
+		if(test_cell && !isObstacle(test_cell))
+			push(voisins, test_cell);/*
+		test_cell = getCellFromXY(x+1, y);
+		if(test_cell && isEmptyCell(test_cell))
+			push(voisins, test_cell);
+				
+		test_cell = getCellFromXY(x-1, y);
+		if(test_cell && isEmptyCell(test_cell))
+			push(voisins, test_cell);
+
+		test_cell = getCellFromXY(x, y+1);
+		if(test_cell && isEmptyCell(test_cell))
+			push(voisins, test_cell);
+				
+		test_cell = getCellFromXY(x, y-1);
+		if(test_cell && isEmptyCell(test_cell))
+			push(voisins, test_cell);
+*/
+		cells_voisins[i] = voisins;
+		voisins = [];
+	}
+}
