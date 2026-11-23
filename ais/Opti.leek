@@ -1,0 +1,405 @@
+// =====================================================================
+//  Opti - IA générique (LeekScript 4)
+//  Principe : à chaque tour on cherche la meilleure (case, cible, combo)
+//  parmi les cases accessibles, on se boost si on peut taper, on exécute,
+//  puis on dépense les PT restants (boucliers, soins, boosts) et on se cache.
+// =====================================================================
+
+global ME = getEntity();
+global DBG = false;
+global AGGRO_TURN = 20;  // après ce tour on arrête de jouer la prudence
+global POISON_WEIGHT = 0.6;     // un poison vaut moins qu'un dégât direct (peut être soigné / dilué)
+global SUMMON_WEIGHT = 0.5;     // priorité plus faible sur les bulbes
+global KILL_BONUS = 400;        // bonus pour un kill ce tour
+
+// ---------- classification des outils (une seule fois) ----------
+global DMG_TOOLS;     // armes + puces qui font des dégâts / poison
+global HEAL_CHIPS;
+global SHIELD_CHIPS;
+global TP_BUFF_CHIPS;
+global STR_BUFF_CHIPS;
+global MP_BUFF_CHIPS;
+global RETURN_CHIPS;
+global CLEANSE_CHIPS;  // antidote / libération
+global TOOL_INFO;      // map tool -> [cost, dmgMin, dmgMax, poisonMin, poisonMax, poisonTurns, isWeapon, maxUses]
+
+function effectsOf(tool, isW) {
+	return isW ? getWeaponEffects(tool) : getChipEffects(tool);
+}
+
+function classify() {
+	DMG_TOOLS = []; HEAL_CHIPS = []; SHIELD_CHIPS = []; TP_BUFF_CHIPS = [];
+	STR_BUFF_CHIPS = []; MP_BUFF_CHIPS = []; RETURN_CHIPS = []; CLEANSE_CHIPS = [];
+	TOOL_INFO = [:];
+	for (var w in getWeapons()) {
+		register(w, true);
+	}
+	for (var c in getChips()) {
+		register(c, false);
+	}
+}
+
+function register(tool, isW) {
+	var dMin = 0, dMax = 0, pMin = 0, pMax = 0, pTurns = 0;
+	var after = false, heal = false, shield = false, tpb = false, strb = false, mpb = false, ret = false, clean = false;
+	for (var e in effectsOf(tool, isW)) {
+		var t = e[0];
+		if (t == EFFECT_DAMAGE) { dMin += e[1]; dMax += e[2]; }
+		else if (t == EFFECT_POISON) { pMin += e[1]; pMax += e[2]; pTurns = max(pTurns, e[3]); }
+		else if (t == EFFECT_HEAL) heal = true;
+		else if (t == EFFECT_RELATIVE_SHIELD || t == EFFECT_ABSOLUTE_SHIELD || t == EFFECT_RAW_ABSOLUTE_SHIELD) shield = true;
+		else if (t == EFFECT_RAW_BUFF_TP || t == EFFECT_BUFF_TP) tpb = true;
+		else if (t == EFFECT_RAW_BUFF_STRENGTH || t == EFFECT_BUFF_STRENGTH) strb = true;
+		else if (t == EFFECT_RAW_BUFF_MP || t == EFFECT_BUFF_MP) mpb = true;
+		else if (t == EFFECT_DAMAGE_RETURN) ret = true;
+		else if (t == EFFECT_ANTIDOTE || t == EFFECT_DEBUFF) clean = true;
+		else if (t == EFFECT_AFTEREFFECT) after = true;
+	}
+	var cost = isW ? getWeaponCost(tool) : getChipCost(tool);
+	var uses = isW ? getWeaponMaxUses(tool) : getChipMaxUses(tool);
+	if (uses <= 0) uses = 10;
+	TOOL_INFO[tool] = [cost, dMin, dMax, pMin, pMax, pTurns, isW, uses];
+	if (dMax > 0 || pMax > 0) push(DMG_TOOLS, tool);
+	else if (isW) return;
+	else if (heal) push(HEAL_CHIPS, tool);
+	else if (shield) push(SHIELD_CHIPS, tool);
+	else if (tpb) push(TP_BUFF_CHIPS, tool);
+	else if (strb && !after) push(STR_BUFF_CHIPS, tool);
+	else if (mpb) push(MP_BUFF_CHIPS, tool);
+	else if (ret) push(RETURN_CHIPS, tool);
+	else if (clean) push(CLEANSE_CHIPS, tool);
+}
+
+if (getTurn() == 1) classify();
+
+// ---------- utilitaires ----------
+function toolCost(tool) { return TOOL_INFO[tool][0]; }
+function isW(tool) { return TOOL_INFO[tool][6]; }
+
+function chipReady(chip) {
+	return getCooldown(chip) == 0 && getChipCost(chip) <= getTP();
+}
+
+function damageReturnOf(e) {
+	var r = 0;
+	for (var ef in getEffects(e)) if (ef[0] == EFFECT_DAMAGE_RETURN) r += ef[1];
+	return r / 100;
+}
+
+// dégât espéré d'une utilisation de tool sur e
+function hitValue(tool, e) {
+	var i = TOOL_INFO[tool];
+	var v = 0;
+	if (i[2] > 0) {
+		var d = (i[1] + i[2]) / 2 * (1 + getStrength() / 100);
+		d = d * (1 - getRelativeShield(e) / 100) - getAbsoluteShield(e);
+		if (d > 0) v += d;
+	}
+	if (i[4] > 0) {
+		var p = (i[3] + i[4]) / 2 * (1 + getMagic() / 100);
+		p = p * (1 - getRelativeShield(e) / 100) - getAbsoluteShield(e);
+		if (p > 0) v += p * i[5] * POISON_WEIGHT;
+	}
+	return v;
+}
+
+// cases accessibles : map cell -> distance
+function reachable(mp) {
+	var res = [:];
+	var from = getCell();
+	res[from] = 0;
+	var x0 = getCellX(from), y0 = getCellY(from);
+	for (var dx = -mp; dx <= mp; dx++) {
+		var r = mp - abs(dx);
+		for (var dy = -r; dy <= r; dy++) {
+			if (dx == 0 && dy == 0) continue;
+			var c = getCellFromXY(x0 + dx, y0 + dy);
+			if (c == null) continue;
+			var l = getPathLength(from, c);
+			if (l != null && l <= mp) res[c] = l;
+		}
+	}
+	return res;
+}
+
+// cases depuis lesquelles tool touche e (en ignorant ma propre case)
+function cellsFor(tool, e) {
+	var cells = isW(tool) ? getCellsToUseWeapon(tool, e, [getCell()]) : getCellsToUseChip(tool, e, [getCell()]);
+	if (cells == null || count(cells) == 0) return null;
+	var s = [:];
+	for (var c in cells) s[c] = true;
+	return s;
+}
+
+// sac à dos par groupe : meilleur combo de tools sur e avec tp PT
+// renvoie [valeur, [[tool, nb], ...]]
+function bestCombo(tools, e, tp) {
+	var cur = getWeapon();
+	var best = [];
+	var pick = [];
+	for (var t = 0; t <= tp; t++) { push(best, 0); }
+	var choice = [];  // choice[k][t] = nb d'utilisations de tools[k] avec t PT
+	var k = 0;
+	for (var tool in tools) {
+		var cost = toolCost(tool);
+		var extra = (isW(tool) && tool != cur) ? 1 : 0;
+		var maxUses = TOOL_INFO[tool][7];
+		if (!isW(tool)) {
+			if (getCooldown(tool) > 0) maxUses = 0;
+			else if (getChipCooldown(tool) > 0) maxUses = 1;
+		}
+		var hv = hitValue(tool, e);
+		var nb = [];
+		var nbest = [];
+		for (var t = 0; t <= tp; t++) {
+			var bv = best[t];
+			var bn = 0;
+			for (var n = 1; n <= maxUses; n++) {
+				var c = n * cost + extra;
+				if (c > t) break;
+				var v = best[t - c] + n * hv;
+				if (v > bv) { bv = v; bn = n; }
+			}
+			push(nbest, bv);
+			push(nb, bn);
+		}
+		best = nbest;
+		push(choice, nb);
+		k++;
+	}
+	// reconstruction
+	var plan = [];
+	var t = tp;
+	for (var j = count(tools) - 1; j >= 0; j--) {
+		var n = choice[j][t];
+		if (n > 0) {
+			var tool = tools[j];
+			push(plan, [tool, n]);
+			t -= n * toolCost(tool) + ((isW(tool) && tool != cur) ? 1 : 0);
+		}
+	}
+	return [best[tp], plan];
+}
+
+function targetScore(e, dmg) {
+	var life = getLife(e);
+	var ret = damageReturnOf(e) * min(dmg, life);
+	var s = min(dmg, life);
+	if (dmg >= life) s += KILL_BONUS + life * 0.5;
+	if (isSummon(e)) s *= SUMMON_WEIGHT;
+	return s - ret * 1.5;
+}
+
+// meilleur plan : [score, cell, enemy, combo]
+function planAttack(tp) {
+	var reach = reachable(getMP());
+	var best = null;
+	for (var e in getAliveEnemies()) {
+		var usable = [];
+		var sets = [];
+		for (var tool in DMG_TOOLS) {
+			if (!isW(tool) && getCooldown(tool) > 0) continue;
+			if (toolCost(tool) > tp) continue;
+			if (hitValue(tool, e) <= 0) continue;
+			var s = cellsFor(tool, e);
+			if (DBG) debug('  tool ' + (isW(tool) ? getWeaponName(tool) : getChipName(tool)) + ' cells=' + (s == null ? 0 : mapSize(s)) + ' hv=' + hitValue(tool, e));
+			if (s == null) continue;
+			push(usable, tool);
+			push(sets, s);
+		}
+		if (count(usable) == 0) continue;
+		var memo = [:];
+		for (var cell : var dist in reach) {
+			var mask = "";
+			var tools = [];
+			for (var i = 0; i < count(usable); i++) {
+				if (sets[i][cell] != null) { push(tools, usable[i]); mask += "1"; }
+				else mask += "0";
+			}
+			if (count(tools) == 0) continue;
+			var r = memo[mask];
+			if (r == null) { r = bestCombo(tools, e, tp); memo[mask] = r; }
+			if (r[0] <= 0) continue;
+			var sc = targetScore(e, r[0]) - dist * 15;
+			if (best == null || sc > best[0]) best = [sc, cell, e, r[1]];
+		}
+	}
+	return best;
+}
+
+function execute(plan) {
+	debug('exec ' + [plan[1], getCell(), plan[3]]);
+	var cell = plan[1];
+	var e = plan[2];
+	if (cell != getCell()) moveTowardCell(cell);
+	// arme actuelle d'abord, puis le reste
+	var combo = plan[3];
+	var cur = getWeapon();
+	var ordered = [];
+	for (var p in combo) if (p[0] == cur) push(ordered, p);
+	for (var p in combo) if (p[0] != cur) push(ordered, p);
+	for (var p in ordered) {
+		var tool = p[0];
+		for (var n = 0; n < p[1]; n++) {
+			if (!isAlive(e)) return;
+			if (isW(tool)) {
+				if (getWeapon() != tool) setWeapon(tool);
+				if (useWeapon(e) < 0) break;
+			} else {
+				if (useChip(tool, e) < 0) break;
+			}
+		}
+	}
+}
+
+// ---------- phases ----------
+function lifeRatio(e) { return getLife(e) / getTotalLife(e); }
+
+function healSelf(threshold) {
+	if (lifeRatio(ME) >= threshold) return;
+	// la plus grosse heal d'abord (regeneration etc.)
+	var sorted = arraySort(HEAL_CHIPS, function(a, b) { return toolCost(b) - toolCost(a); });
+	for (var c in sorted) {
+		if (lifeRatio(ME) >= threshold) break;
+		if (chipReady(c)) useChip(c, ME);
+	}
+}
+
+function healAllies() {
+	for (var a in getAliveAllies()) {
+		if (a == ME || isSummon(a) || lifeRatio(a) > 0.6) continue;
+		for (var c in HEAL_CHIPS) if (chipReady(c) && canUseChip(c, a)) useChip(c, a);
+	}
+}
+
+function cleanseIfPoisoned() {
+	var poison = 0;
+	for (var ef in getEffects(ME)) if (ef[0] == EFFECT_POISON) poison += ef[1] * ef[3];
+	if (poison < getLife() * 0.25) return;
+	for (var c in CLEANSE_CHIPS) if (chipReady(c)) { useChip(c, ME); return; }
+}
+
+function enemyThreatens() {
+	// un ennemi peut-il me toucher au prochain tour ? (approximation)
+	for (var e in getAliveEnemies()) {
+		if (getCellDistance(getCell(), getCell(e)) <= getMP(e) + 10) return true;
+	}
+	return false;
+}
+
+function useBuffs(list) {
+	for (var c in list) if (chipReady(c)) useChip(c, ME);
+}
+
+// portée max des outils offensifs d'un ennemi
+global ENEMY_RANGE = [:];
+function enemyRange(e) {
+	var r = ENEMY_RANGE[e];
+	if (r != null) return r;
+	r = 1;
+	for (var w in getWeapons(e)) r = max(r, getWeaponMaxRange(w));
+	for (var c in getChips(e)) {
+		for (var ef in getChipEffects(c)) {
+			if (ef[0] == EFFECT_DAMAGE || ef[0] == EFFECT_POISON) { r = max(r, getChipMaxRange(c)); break; }
+		}
+	}
+	ENEMY_RANGE[e] = r;
+	return r;
+}
+
+// nombre d'ennemis (non bulbes) qui pourront me frapper sur cette case au prochain tour (approx.)
+function threatCount(cell) {
+	var n = 0;
+	for (var e in getAliveEnemies()) {
+		if (isSummon(e)) continue;
+		if (getCellDistance(cell, getCell(e)) <= getTotalMP(e) + enemyRange(e)) n++;
+	}
+	return n;
+}
+
+// se placer : hors menace si possible (au plus près), sinon caché, sinon loin
+function position() {
+	if (getMP() <= 0) return;
+	var aggressive = getTurn() > AGGRO_TURN;
+	var reach = reachable(getMP());
+	var bestCell = getCell();
+	var bestScore = -1000000;
+	for (var cell : var dist in reach) {
+		var seen = 0;
+		var minD = 1000;
+		for (var e in getAliveEnemies()) {
+			if (isSummon(e)) continue;
+			if (lineOfSight(getCell(e), cell, [getCell(e), getCell()])) seen++;
+			minD = min(minD, getCellDistance(cell, getCell(e)));
+		}
+		var t = aggressive ? 0 : threatCount(cell);
+		var sc;
+		if (t == 0) sc = -seen * 30 - minD;           // sûr : on reste au contact
+		else sc = -t * 1000 - seen * 200 + minD * 5;  // menacé : caché puis loin
+		if (sc > bestScore) { bestScore = sc; bestCell = cell; }
+	}
+	if (bestCell != getCell()) moveTowardCell(bestCell);
+}
+
+function hasEffect(e, types) {
+	for (var ef in getEffects(e)) if (inArray(types, ef[0])) return true;
+	return false;
+}
+
+function resurrectAlly() {
+	if (!inArray(getChips(), CHIP_RESURRECTION) || getCooldown(CHIP_RESURRECTION) > 0) return;
+	var best = null;
+	for (var a in getDeadAllies()) {
+		if (!isSummon(a) && (best == null || getLevel(a) > getLevel(best))) best = a;
+	}
+	if (best == null) return;
+	for (var c in getCellsToUseChipOnCell(CHIP_RESURRECTION, getCell())) {
+		if (resurrect(best, c) > 0) return;
+	}
+}
+
+// =====================================================================
+//  Tour
+// =====================================================================
+cleanseIfPoisoned();
+healSelf(0.4);
+resurrectAlly();
+
+var plan = planAttack(getTP());
+debug('T' + getTurn() + ' life=' + getLife() + ' tp=' + getTP() + ' mp=' + getMP() + ' str=' + getStrength() + ' plan=' + (plan == null ? 'null' : [plan[0], plan[1], getName(plan[2]), plan[3]]) + ' dmgTools=' + DMG_TOOLS);
+
+if (plan == null && count(MP_BUFF_CHIPS) > 0) {
+	// personne à portée : bottes puis on recalcule
+	useBuffs(MP_BUFF_CHIPS);
+	plan = planAttack(getTP());
+}
+
+if (plan != null) {
+	// on peut taper ce tour : boosts PT d'abord, puis force si ça laisse de quoi frapper
+	useBuffs(TP_BUFF_CHIPS);
+	for (var c in STR_BUFF_CHIPS) {
+		if (chipReady(c) && getTP() - getChipCost(c) >= 6) useChip(c, ME);
+	}
+	// jusqu'à 3 passes (si la cible meurt on retarget)
+	for (var pass = 0; pass < 3 && plan != null && getTP() > 0; pass++) {
+		execute(plan);
+		plan = planAttack(getTP());
+		if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
+	}
+} else {
+	// rien à portée : on se place à la limite de la zone de menace ennemie
+	position();
+}
+
+// PT restants
+healSelf(0.6);
+healAllies();
+if (enemyThreatens()) {
+	useBuffs(SHIELD_CHIPS);
+	useBuffs(RETURN_CHIPS);
+	if (!hasEffect(ME, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH]))
+		for (var c in STR_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }  // préparer le tour suivant
+}
+healSelf(0.9);
+position();
+debug('end tp=' + getTP() + ' mp=' + getMP() + ' cell=' + getCell());
