@@ -575,21 +575,6 @@ function resurrectAlly() {
 // =====================================================================
 
 // IA générique des bulbes : soigne, protège / booste les alliés, attaque, puis se met à l'abri
-// case pour un bulbe de soutien : à portée et en vue de `target`, en limitant les dégâts encaissables
-function bulbCell(target) {
-	var reach = reachable(getMP());
-	var tc = getCell(target);
-	var best = getCell(), bestSc = -1000000;
-	for (var cell : var dist in reach) {
-		var d = getCellDistance(cell, tc);
-		var sc = -danger(cell) - dist * 2 - d * 5;
-		if (d <= SUPPORT_RANGE && lineOfSight(cell, tc, [tc, getCell()])) sc += 200;
-		if (sc > bestSc) { bestSc = sc; best = cell; }
-	}
-	return best;
-}
-
-// IA générique des bulbes : soigner les poireaux blessés, protéger le plus menacé, attaquer la cible commune
 function bulbAI() {
 	var me = getEntity();
 	var heals = [], supports = [], attacks = [];
@@ -599,63 +584,46 @@ function bulbAI() {
 		else if (t == EFFECT_DAMAGE || t == EFFECT_POISON) push(attacks, c);
 		else push(supports, c);
 	}
-	// nos poireaux (pas les bulbes), le plus menacé d'abord
-	var leeks = [];
-	for (var a in getAliveAllies()) if (!isSummon(a)) push(leeks, a);
-	leeks = arraySort(leeks, function(a, b) { return danger(getCell(b)) - danger(getCell(a)); });
-	var protege = count(leeks) > 0 ? leeks[0] : null;
-	var supportive = count(heals) + count(supports) > 0;
-
-	// 1. bulbe de soutien : se placer à portée du protégé
-	if (supportive && protege != null) {
-		var cell = bulbCell(protege);
-		if (cell != getCell()) moveTowardCell(cell);
+	// soin : l'allié le plus blessé
+	var hurt = null;
+	for (var a in getAliveAllies()) {
+		var r = getLife(a) / getTotalLife(a);
+		if (r < 0.85 && (hurt == null || r < getLife(hurt) / getTotalLife(hurt))) hurt = a;
 	}
-	// 2. soins : le poireau le plus blessé (puis un bulbe), sans gaspiller
-	if (count(heals) > 0) {
-		var hurt = null, worst = 0.85;
-		for (var a in leeks) if (lifeRatio(a) < worst) { worst = lifeRatio(a); hurt = a; }
-		if (hurt == null) for (var a in getAliveAllies()) if (lifeRatio(a) < 0.6) { hurt = a; break; }
-		if (hurt != null) {
-			for (var c in heals) {
-				while (getCooldown(c) == 0 && getTotalLife(hurt) - getLife(hurt) >= healAmount(c) * 0.5
-					&& canUseChip(c, hurt) && useChip(c, hurt) > 0) {}
-			}
+	if (hurt != null && count(heals) > 0) {
+		if (!canUseChip(heals[0], hurt)) moveToward(hurt);
+		for (var c in heals) while (getCooldown(c) == 0 && useChip(c, hurt) > 0) {}
+	}
+	// soutien : le poireau allié le plus proche
+	var leek = null;
+	for (var a in getAliveAllies()) {
+		if (!isSummon(a) && (leek == null || getCellDistance(getCell(), getCell(a)) < getCellDistance(getCell(), getCell(leek)))) leek = a;
+	}
+	if (leek != null) {
+		for (var c in supports) {
+			if (getCooldown(c) > 0) continue;
+			if (!canUseChip(c, leek)) moveToward(leek);
+			useChip(c, leek);
 		}
 	}
-	// 3. boucliers / boosts : le protégé d'abord, puis les autres poireaux
-	for (var c in supports) {
-		if (getCooldown(c) > 0) continue;
-		for (var a in leeks) if (canUseChip(c, a) && useChip(c, a) > 0) break;
-	}
-	// 4. attaque : la cible commune si on peut l'atteindre, sinon l'ennemi le plus proche
-	var targets = [];
-	var f = focusTarget();
-	if (f != null) push(targets, f);
-	var n = nearestFoe();
-	if (n != null && n != f) push(targets, n);
-	for (var c in attacks) {
-		if (getCooldown(c) > 0 || getChipCost(c) > getTP()) continue;
-		for (var e in targets) {
+	// attaque : l'ennemi le plus proche
+	var e = nearestFoe();
+	if (e != null) {
+		for (var c in attacks) {
+			if (getCooldown(c) > 0 || getChipCost(c) > getTP()) continue;
 			if (!canUseChip(c, e) && getMP() > 0) {
+				var cells = getCellsToUseChip(c, e);
 				var best = null, bd = 1000;
-				for (var cell in getCellsToUseChip(c, e)) {
+				for (var cell in cells) {
 					var l = getPathLength(getCell(), cell);
 					if (l != null && l <= getMP() && l < bd) { bd = l; best = cell; }
 				}
 				if (best != null) moveTowardCell(best);
 			}
-			if (canUseChip(c, e)) {
-				while (getCooldown(c) == 0 && getChipCost(c) <= getTP() && useChip(c, e) > 0) {}
-				break;
-			}
+			while (getCooldown(c) == 0 && useChip(c, e) > 0) {}
 		}
 	}
-	// 5. fin de tour : le soutien reste près du protégé, l'attaquant se met à l'abri
-	if (supportive && protege != null) {
-		var cell = bulbCell(protege);
-		if (cell != getCell()) moveTowardCell(cell);
-	} else position();
+	position();
 }
 
 // invoque les bulbes prêts (les plus chers d'abord), sur une case libre loin des ennemis
