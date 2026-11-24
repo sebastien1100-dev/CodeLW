@@ -15,10 +15,7 @@ global USE_BULBS = true;
 global THREAT_COST = 350;   // (ancien modèle) pénalité par ennemi pouvant me frapper
 global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
 global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
-global SAFE_RATIO = 0.05;
-global HEAL_WASTE = 0.7;    // on ne soigne que si la vie manquante couvre 70% du soin
-global SHIELD_MIN = 0.1;    // boucliers si les dégâts attendus dépassent 10% de ma vie
-global HITS_PER_TURN = 3;   // nombre de coups encaissés par tour (pour les boucliers absolus)   // en dessous de ce % de ma vie, une case est considérée sûre
+global SAFE_RATIO = 0.05;   // en dessous de ce % de ma vie, une case est considérée sûre
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
 global POISON_WEIGHT = 0.6;     // un poison vaut moins qu'un dégât direct (peut être soigné / dilué)
 global SUMMON_WEIGHT = 0.5;     // priorité plus faible sur les bulbes
@@ -304,44 +301,14 @@ function execute(plan) {
 // ---------- phases ----------
 function lifeRatio(e) { return getLife(e) / getTotalLife(e); }
 
-// soin attendu d'une puce sur moi (la sagesse multiplie les soins)
-function healAmount(c) {
-	var h = 0;
-	for (var ef in getChipEffects(c)) if (ef[0] == EFFECT_HEAL) h += (ef[1] + ef[2]) / 2 * max(1, ef[3]);
-	return h * (1 + getWisdom() / 100);
-}
-
-// se soigner si la vie passe sous `threshold`, sans gaspiller : une puce n'est lancée que si
-// la vie manquante couvre au moins HEAL_WASTE de son soin
 function healSelf(threshold) {
 	if (lifeRatio(ME) >= threshold) return;
-	var sorted = arraySort(HEAL_CHIPS, function(a, b) { return healAmount(b) - healAmount(a); });
+	// la plus grosse heal d'abord (regeneration etc.)
+	var sorted = arraySort(HEAL_CHIPS, function(a, b) { return toolCost(b) - toolCost(a); });
 	for (var c in sorted) {
 		if (lifeRatio(ME) >= threshold) break;
-		var missing = getTotalLife() - getLife();
-		if (chipReady(c) && missing >= healAmount(c) * HEAL_WASTE) useChip(c, ME);
+		if (chipReady(c)) useChip(c, ME);
 	}
-}
-
-// valeur de protection d'un bouclier contre `incoming` dégâts attendus
-function shieldValue(c, incoming) {
-	var v = 0;
-	var res = 1 + getResistance() / 100;
-	for (var ef in getChipEffects(c)) {
-		var turns = max(1, ef[3]);
-		if (ef[0] == EFFECT_RELATIVE_SHIELD) v += incoming * min(0.9, (ef[1] + ef[2]) / 2 * res / 100) * min(turns, 2);
-		else if (ef[0] == EFFECT_ABSOLUTE_SHIELD || ef[0] == EFFECT_RAW_ABSOLUTE_SHIELD) v += (ef[1] + ef[2]) / 2 * res * HITS_PER_TURN * min(turns, 2);
-	}
-	return v;
-}
-
-// boucliers selon les dégâts réellement attendus sur ma case, les plus rentables d'abord
-function protect() {
-	var incoming = danger(getCell());
-	if (incoming < getLife() * SHIELD_MIN) return;
-	var sorted = arraySort(SHIELD_CHIPS, function(a, b) { return shieldValue(b, incoming) / getChipCost(b) - shieldValue(a, incoming) / getChipCost(a); });
-	for (var c in sorted) if (chipReady(c) && canUseChip(c, ME)) useChip(c, ME);
-	for (var c in RETURN_CHIPS) if (chipReady(c)) useChip(c, ME);
 }
 
 function healAllies() {
@@ -641,12 +608,16 @@ if (plan != null) {
 	position();
 }
 
-// PT restants : on se place d'abord, puis on se protège selon la menace réelle sur la case finale
+// PT restants
+healSelf(0.6);
 healAllies();
+if (enemyThreatens()) {
+	useBuffs(SHIELD_CHIPS);
+	useBuffs(RETURN_CHIPS);
+	if (!hasEffect(ME, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH]))
+		for (var c in STR_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }  // préparer le tour suivant
+}
+healSelf(0.9);
 summonBulbs();
 position();
-protect();
-if (enemyThreatens() && !hasEffect(ME, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH]))
-	for (var c in STR_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }  // préparer le tour suivant
-healSelf(1);
 debug('end tp=' + getTP() + ' mp=' + getMP() + ' cell=' + getCell());
