@@ -8,6 +8,9 @@
 global ME = getEntity();
 global DBG = false;
 global AGGRO_TURN = 20;  // après ce tour on arrête de jouer la prudence
+global USE_BULBS = true;
+global THREAT_COST = 350;   // pénalité par ennemi pouvant me frapper sur la case d'attaque
+global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
 global POISON_WEIGHT = 0.6;     // un poison vaut moins qu'un dégât direct (peut être soigné / dilué)
 global SUMMON_WEIGHT = 0.5;     // priorité plus faible sur les bulbes
 global KILL_BONUS = 400;        // bonus pour un kill ce tour
@@ -21,6 +24,7 @@ global STR_BUFF_CHIPS;
 global MP_BUFF_CHIPS;
 global RETURN_CHIPS;
 global CLEANSE_CHIPS;  // antidote / libération
+global SUMMON_CHIPS;
 global TOOL_INFO;      // map tool -> [cost, dmgMin, dmgMax, poisonMin, poisonMax, poisonTurns, isWeapon, maxUses]
 
 function effectsOf(tool, isW) {
@@ -29,7 +33,7 @@ function effectsOf(tool, isW) {
 
 function classify() {
 	DMG_TOOLS = []; HEAL_CHIPS = []; SHIELD_CHIPS = []; TP_BUFF_CHIPS = [];
-	STR_BUFF_CHIPS = []; MP_BUFF_CHIPS = []; RETURN_CHIPS = []; CLEANSE_CHIPS = [];
+	STR_BUFF_CHIPS = []; MP_BUFF_CHIPS = []; RETURN_CHIPS = []; CLEANSE_CHIPS = []; SUMMON_CHIPS = [];
 	TOOL_INFO = [:];
 	for (var w in getWeapons()) {
 		register(w, true);
@@ -41,7 +45,7 @@ function classify() {
 
 function register(tool, isW) {
 	var dMin = 0, dMax = 0, pMin = 0, pMax = 0, pTurns = 0;
-	var after = false, heal = false, shield = false, tpb = false, strb = false, mpb = false, ret = false, clean = false;
+	var summ = false, after = false, heal = false, shield = false, tpb = false, strb = false, mpb = false, ret = false, clean = false;
 	for (var e in effectsOf(tool, isW)) {
 		var t = e[0];
 		if (t == EFFECT_DAMAGE) { dMin += e[1]; dMax += e[2]; }
@@ -54,6 +58,7 @@ function register(tool, isW) {
 		else if (t == EFFECT_DAMAGE_RETURN) ret = true;
 		else if (t == EFFECT_ANTIDOTE || t == EFFECT_DEBUFF) clean = true;
 		else if (t == EFFECT_AFTEREFFECT) after = true;
+		else if (t == EFFECT_SUMMON) summ = true;
 	}
 	var cost = isW ? getWeaponCost(tool) : getChipCost(tool);
 	var uses = isW ? getWeaponMaxUses(tool) : getChipMaxUses(tool);
@@ -61,6 +66,7 @@ function register(tool, isW) {
 	TOOL_INFO[tool] = [cost, dMin, dMax, pMin, pMax, pTurns, isW, uses];
 	if (dMax > 0 || pMax > 0) push(DMG_TOOLS, tool);
 	else if (isW) return;
+	else if (summ) push(SUMMON_CHIPS, tool);
 	else if (heal) push(HEAL_CHIPS, tool);
 	else if (shield) push(SHIELD_CHIPS, tool);
 	else if (tpb) push(TP_BUFF_CHIPS, tool);
@@ -192,6 +198,7 @@ function targetScore(e, dmg) {
 
 // meilleur plan : [score, cell, enemy, combo]
 function planAttack(tp) {
+	var aggressive = getTurn() > AGGRO_TURN;
 	var reach = reachable(getMP());
 	var best = null;
 	for (var e in getAliveEnemies()) {
@@ -221,9 +228,15 @@ function planAttack(tp) {
 			if (r == null) { r = bestCombo(tools, e, tp); memo[mask] = r; }
 			if (r[0] <= 0) continue;
 			var sc = targetScore(e, r[0]) - dist * 15;
+			if (!aggressive) {
+				// attaquer depuis une case menacée coûte cher, surtout sans PM pour repartir
+				var th = threatCount(cell);
+				if (th > 0) sc -= th * THREAT_COST * (getMP() - dist <= 1 ? 1 : 0.5);
+			}
 			if (best == null || sc > best[0]) best = [sc, cell, e, r[1]];
 		}
 	}
+	if (best != null && best[0] <= 0) return null;
 	return best;
 }
 
@@ -358,6 +371,88 @@ function resurrectAlly() {
 	}
 }
 
+
+// =====================================================================
+//  Bulbes
+// =====================================================================
+
+// IA générique des bulbes : soigne, protège / booste les alliés, attaque, puis se met à l'abri
+function bulbAI() {
+	var me = getEntity();
+	var heals = [], supports = [], attacks = [];
+	for (var c in getChips(me)) {
+		var t = getChipEffects(c)[0][0];
+		if (t == EFFECT_HEAL) push(heals, c);
+		else if (t == EFFECT_DAMAGE || t == EFFECT_POISON) push(attacks, c);
+		else push(supports, c);
+	}
+	// soin : l'allié le plus blessé
+	var hurt = null;
+	for (var a in getAliveAllies()) {
+		var r = getLife(a) / getTotalLife(a);
+		if (r < 0.85 && (hurt == null || r < getLife(hurt) / getTotalLife(hurt))) hurt = a;
+	}
+	if (hurt != null && count(heals) > 0) {
+		if (!canUseChip(heals[0], hurt)) moveToward(hurt);
+		for (var c in heals) while (getCooldown(c) == 0 && useChip(c, hurt) > 0) {}
+	}
+	// soutien : le poireau allié le plus proche
+	var leek = null;
+	for (var a in getAliveAllies()) {
+		if (!isSummon(a) && (leek == null || getCellDistance(getCell(), getCell(a)) < getCellDistance(getCell(), getCell(leek)))) leek = a;
+	}
+	if (leek != null) {
+		for (var c in supports) {
+			if (getCooldown(c) > 0) continue;
+			if (!canUseChip(c, leek)) moveToward(leek);
+			useChip(c, leek);
+		}
+	}
+	// attaque : l'ennemi le plus proche
+	var e = getNearestEnemy();
+	if (e != null) {
+		for (var c in attacks) {
+			if (getCooldown(c) > 0 || getChipCost(c) > getTP()) continue;
+			if (!canUseChip(c, e) && getMP() > 0) {
+				var cells = getCellsToUseChip(c, e);
+				var best = null, bd = 1000;
+				for (var cell in cells) {
+					var l = getPathLength(getCell(), cell);
+					if (l != null && l <= getMP() && l < bd) { bd = l; best = cell; }
+				}
+				if (best != null) moveTowardCell(best);
+			}
+			while (getCooldown(c) == 0 && useChip(c, e) > 0) {}
+		}
+	}
+	position();
+}
+
+// invoque les bulbes prêts (les plus chers d'abord), sur une case libre loin des ennemis
+function summonBulbs() {
+	if (!USE_BULBS) return;
+	var chips = arraySort(SUMMON_CHIPS, function(a, b) { return getChipCost(b) - getChipCost(a); });
+	for (var chip in chips) {
+		if (!chipReady(chip)) continue;
+		var from = getCell();
+		var x0 = getCellX(from), y0 = getCellY(from);
+		var rMax = getChipMaxRange(chip), rMin = getChipMinRange(chip);
+		var bestCell = null, bestD = -1;
+		for (var dx = -rMax; dx <= rMax; dx++) {
+			for (var dy = -rMax; dy <= rMax; dy++) {
+				var d = abs(dx) + abs(dy);
+				if (d < rMin || d > rMax) continue;
+				var c = getCellFromXY(x0 + dx, y0 + dy);
+				if (c == null || !isEmptyCell(c) || !lineOfSight(from, c)) continue;
+				var minD = 1000;
+				for (var e in getAliveEnemies()) minD = min(minD, getCellDistance(c, getCell(e)));
+				if (minD > bestD) { bestD = minD; bestCell = c; }
+			}
+		}
+		if (bestCell != null) summon(chip, bestCell, bulbAI);
+	}
+}
+
 // =====================================================================
 //  Tour
 // =====================================================================
@@ -370,8 +465,14 @@ debug('T' + getTurn() + ' life=' + getLife() + ' tp=' + getTP() + ' mp=' + getMP
 
 if (plan == null && count(MP_BUFF_CHIPS) > 0) {
 	// personne à portée : bottes puis on recalcule
-	useBuffs(MP_BUFF_CHIPS);
-	plan = planAttack(getTP());
+	// on simule d'abord : les bottes ne servent que si l'attaque en vaut la peine
+	var ready = [];
+	for (var c in MP_BUFF_CHIPS) if (chipReady(c)) push(ready, c);
+	if (count(ready) > 0) {
+		useChip(ready[0], ME);
+		plan = planAttack(getTP());
+		if (plan != null && plan[0] < BOOTS_MIN_SCORE) plan = null;
+	}
 }
 
 if (plan != null) {
@@ -387,7 +488,8 @@ if (plan != null) {
 		if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
 	}
 } else {
-	// rien à portée : on se place à la limite de la zone de menace ennemie
+	// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie
+	summonBulbs();
 	position();
 }
 
@@ -401,5 +503,6 @@ if (enemyThreatens()) {
 		for (var c in STR_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }  // préparer le tour suivant
 }
 healSelf(0.9);
+summonBulbs();
 position();
 debug('end tp=' + getTP() + ' mp=' + getMP() + ' cell=' + getCell());
