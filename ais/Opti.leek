@@ -15,7 +15,8 @@ global USE_BULBS = true;
 global THREAT_COST = 350;   // (ancien modèle) pénalité par ennemi pouvant me frapper
 global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
 global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
-global SAFE_RATIO = 0.05;   // en dessous de ce % de ma vie, une case est considérée sûre
+global SAFE_RATIO = 0.05;
+global FOCUS_MULT = 1.4;    // bonus pour la cible commune de l'équipe (combats à plusieurs)   // en dessous de ce % de ma vie, une case est considérée sûre
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
 global POISON_WEIGHT = 0.6;     // un poison vaut moins qu'un dégât direct (peut être soigné / dilué)
 global SUMMON_WEIGHT = 0.5;     // priorité plus faible sur les bulbes
@@ -220,12 +221,30 @@ function bestCombo(tools, e, tp) {
 	return [best[tp], plan];
 }
 
+// cible commune de l'équipe : tous nos poireaux font le même calcul, donc convergent sur le même ennemi
+// (le poireau ennemi le plus facile à abattre : vie effective = vie protégée par ses boucliers)
+global FOCUS = null;
+global FOCUS_TURN = -1;
+function focusTarget() {
+	if (FOCUS_TURN == getTurn() && FOCUS != null && isAlive(FOCUS)) return FOCUS;
+	FOCUS = null;
+	var best = 1000000000;
+	for (var e in foes()) {
+		if (isSummon(e) || isStatic(e)) continue;
+		var eff = getLife(e) / max(0.1, 1 - getRelativeShield(e) / 100) + getAbsoluteShield(e) * 3;
+		if (eff < best) { best = eff; FOCUS = e; }
+	}
+	FOCUS_TURN = getTurn();
+	return FOCUS;
+}
+
 function targetScore(e, dmg) {
 	var life = getLife(e);
 	var ret = damageReturnOf(e) * min(dmg, life);
 	var s = min(dmg, life);
 	if (dmg >= life) s += KILL_BONUS + life * 0.5;
 	if (isSummon(e)) s *= SUMMON_WEIGHT;
+	if (count(getAliveAllies()) > 1 && e == focusTarget()) s *= FOCUS_MULT;
 	return s - ret * 1.5;
 }
 
