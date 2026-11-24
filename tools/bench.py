@@ -60,8 +60,8 @@ def clone_entry(name, build, kit, ai, verbose=True):
     if l["level"] >= 301 and build + "_niv301" in load("builds.json"):
         b = load("builds.json")[build + "_niv301"]
     stats, bought, spent = capital.build_stats(b, l["level"])
-    for k in STATS:  # bonus des composants = total - base achetée
-        stats[k] += l["total_" + k] - l[k]
+    for k in STATS:  # bonus des composants = total - base achetée (les scénarios refusent les valeurs négatives)
+        stats[k] = max(0, stats[k] + l["total_" + k] - l[k])
     lo = dict(lw.loadout(lid))
     if kit:
         lo.update({k: v for k, v in load("kits.json")[kit].items() if k in ("weapons", "chips")})
