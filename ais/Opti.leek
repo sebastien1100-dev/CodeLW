@@ -7,10 +7,10 @@
 
 global ME = getEntity();
 global DBG = false;
-global AGGRO_TURN = 12;  // après ce tour on arrête de jouer la prudence
+global AGGRO_TURN = 20;  // après ce tour on arrête de jouer la prudence
 global IDLE = 0;         // tours consécutifs sans attaquer
-global USE_IDLE_AGGRO = true;
-global USE_DEBUFF = true;
+global USE_IDLE_AGGRO = false;
+global USE_DEBUFF = false;
 global USE_BULBS = true;
 global THREAT_COST = 350;   // pénalité par ennemi pouvant me frapper sur la case d'attaque
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
