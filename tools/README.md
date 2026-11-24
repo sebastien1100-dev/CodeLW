@@ -9,6 +9,7 @@ clé API Leek Wars (aucun secret dans le dépôt).
 | `capital.py` | Barème du capital, conversion achats ↔ stats |
 | `bench.py` | Bancs de test gratuits (scénarios) : duel, A/B, clones de répartition, 4 contre 4 |
 | `fights.py` | Lancement des **vrais** combats du jour et bilan (consomme les combats) |
+| `resources.py` | Composants utiles (PT, PM, cœurs, RAM) : fabricables ou ressources manquantes (lecture seule) |
 | `kits.json` | Équipements à tester (`--kit`) |
 | `builds.json` | Répartitions de capital à tester (`--build`) |
 
@@ -50,3 +51,12 @@ python3 tools/bench.py upload ais/Opti.leek --as Opti
 
 Chaque graine est jouée des deux côtés. Sur 48 combats, l'écart-type d'un taux de victoire est
 d'environ 7 points : ne conclure qu'au-delà de ~10 points, et le confirmer sur d'autres graines.
+
+## Ressources et composants
+
+```bash
+python3 tools/resources.py
+```
+
+Lecture seule. Attention : les boîtes de habs (`box_10k_habs`, `box_100k_habs`) et les coffres
+servent d'ingrédients (Alimentation, Cartes mères…) : ne pas les ouvrir sans vérifier les recettes.
