@@ -16,9 +16,6 @@ global THREAT_COST = 350;   // (ancien modèle) pénalité par ennemi pouvant me
 global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
 global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
 global SAFE_RATIO = 0.05;
-global CRIT_BONUS = 0.3;    // un coup critique fait x1.3 de dégâts
-global USE_AREA = false;    // gestion des zones (bonus multi-cibles, tirs amis) : testée sans gain, désactivée
-global FRIENDLY_W = 1.5;    // poids des dégâts infligés à nos alliés/bulbes/nous-même par une arme de zone
 global SUPPORT_RANGE = 5;   // portée typique des boosts sur allié
 global FOCUS_MULT = 1.4;    // bonus pour la cible commune de l'équipe (combats à plusieurs)   // en dessous de ce % de ma vie, une case est considérée sûre
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
@@ -135,14 +132,11 @@ function damageReturnOf(e) {
 }
 
 // dégât espéré d'une utilisation de tool sur e
-// dégâts moyens avec les coups critiques : x1.3, probabilité ~ agilité / 1000
-function critFactor(ent) { return 1 + CRIT_BONUS * min(1, max(0, getAgility(ent)) / 1000); }
-
 function hitValue(tool, e) {
 	var i = TOOL_INFO[tool];
 	var v = 0;
 	if (i[2] > 0) {
-		var d = (i[1] + i[2]) / 2 * (1 + getStrength() / 100) * critFactor(ME);
+		var d = (i[1] + i[2]) / 2 * (1 + getStrength() / 100);
 		d = d * (1 - getRelativeShield(e) / 100) - getAbsoluteShield(e);
 		if (d > 0) v += d;
 	}
@@ -151,54 +145,6 @@ function hitValue(tool, e) {
 		p = p * (1 - getRelativeShield(e) / 100) - getAbsoluteShield(e);
 		if (p > 0) v += p * i[5] * POISON_WEIGHT;
 	}
-	return v;
-}
-
-
-// ---------- armes et puces de zone ----------
-function toolArea(tool) { return isW(tool) ? getWeaponArea(tool) : getChipArea(tool); }
-function isAreaTool(tool) { return toolArea(tool) != AREA_POINT; }
-
-// cibles possibles des dégâts d'un outil (bits du jeu : 2 = alliés, 4 = lanceur)
-function damageTargets(tool) {
-	for (var ef in effectsOf(tool, isW(tool))) if (ef[0] == EFFECT_DAMAGE || ef[0] == EFFECT_POISON) return ef[4];
-	return 31;
-}
-
-// bilan d'un tir de zone sur `target` depuis `from` : [dégâts ennemis, dégâts amis] (amis = alliés, bulbes, moi)
-function areaOutcome(tool, target, from) {
-	var cells = isW(tool) ? getWeaponEffectiveArea(tool, target, from) : getChipEffectiveArea(tool, target, from);
-	if (cells == null) return [0, 0];
-	var line = toolArea(tool) == AREA_LASER_LINE;
-	var radius = 1;
-	if (!line) for (var c in cells) radius = max(radius, getCellDistance(c, target));
-	var tg = damageTargets(tool);
-	var foe = 0, friend = 0;
-	for (var c in cells) {
-		var ent = getEntityOnCell(c);
-		if (ent == null || ent < 0 || !isAlive(ent)) continue;
-		var f = line ? 1 : 1 - 0.5 * getCellDistance(c, target) / radius;
-		var v = hitValue(tool, ent) * f;
-		if (ent == ME) { if (tg & 4) friend += v; }
-		else if (isAlly(ent)) { if (tg & 2) friend += v * (isSummon(ent) ? 0.5 : 1); }
-		else foe += v * (isSummon(ent) ? SUMMON_WEIGHT : 1);
-	}
-	return [foe, friend];
-}
-
-// bonus/malus de zone pour la planification (zones circulaires : ne dépend pas de la case de tir)
-global SPLASH = [:];
-global SPLASH_TURN = -1;
-function splash(tool, e) {
-	if (!USE_AREA) return 0;
-	if (!isAreaTool(tool) || toolArea(tool) == AREA_LASER_LINE) return 0;
-	if (SPLASH_TURN != getTurn()) { SPLASH = [:]; SPLASH_TURN = getTurn(); }
-	var key = tool + "_" + e;
-	var v = SPLASH[key];
-	if (v != null) return v;
-	var o = areaOutcome(tool, getCell(e), getCell());
-	v = (o[0] - hitValue(tool, e) * (isSummon(e) ? SUMMON_WEIGHT : 1)) - o[1] * FRIENDLY_W;
-	SPLASH[key] = v;
 	return v;
 }
 
@@ -247,7 +193,7 @@ function bestCombo(tools, e, tp) {
 			if (getCooldown(tool) > 0) maxUses = 0;
 			else if (getChipCooldown(tool) > 0) maxUses = 1;
 		}
-		var hv = hitValue(tool, e) + splash(tool, e);
+		var hv = hitValue(tool, e);
 		var nb = [];
 		var nbest = [];
 		for (var t = 0; t <= tp; t++) {
@@ -318,7 +264,7 @@ function planAttack(tp) {
 		for (var tool in DMG_TOOLS) {
 			if (!isW(tool) && getCooldown(tool) > 0) continue;
 			if (toolCost(tool) > tp) continue;
-			if (hitValue(tool, e) + splash(tool, e) <= 0) continue;
+			if (hitValue(tool, e) <= 0) continue;
 			var s = cellsFor(tool, e);
 			if (DBG) debug('  tool ' + (isW(tool) ? getWeaponName(tool) : getChipName(tool)) + ' cells=' + (s == null ? 0 : mapSize(s)) + ' hv=' + hitValue(tool, e));
 			if (s == null) continue;
@@ -351,14 +297,6 @@ function planAttack(tp) {
 	return best;
 }
 
-// tir de zone acceptable depuis ma case actuelle : les dégâts amis ne dépassent pas la moitié des dégâts ennemis
-function areaIsSafe(tool, e) {
-	if (!USE_AREA) return true;
-	if (!isAreaTool(tool)) return true;
-	var o = areaOutcome(tool, getCell(e), getCell());
-	return o[1] * FRIENDLY_W <= o[0] * 0.5;
-}
-
 function execute(plan) {
 	debug('exec ' + [plan[1], getCell(), plan[3]]);
 	var cell = plan[1];
@@ -382,11 +320,9 @@ function execute(plan) {
 				}
 				// la case visée a pu ne pas être atteinte (chemin bloqué) : vérifier portée et ligne de vue
 				if (getWeapon() != tool || !canUseWeapon(tool, e)) break;
-				if (!areaIsSafe(tool, e)) break;
 				if (useWeapon(e) < 0) break;
 			} else {
 				if (!canUseChip(tool, e)) break;
-				if (!areaIsSafe(tool, e)) break;
 				if (useChip(tool, e) < 0) break;
 			}
 		}
@@ -465,7 +401,7 @@ function enemyProfile(e) {
 	var p = PROFILE[e];
 	if (p != null) return p;
 	p = [];
-	var str = (1 + max(0, getStrength(e)) / 100) * critFactor(e);
+	var str = 1 + max(0, getStrength(e)) / 100;
 	var mag = 1 + max(0, getMagic(e)) / 100;
 	for (var w in getWeapons(e)) {
 		var d = 0;
