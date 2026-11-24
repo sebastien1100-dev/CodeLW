@@ -332,5 +332,197 @@
     "template": 293
    }
   ]
+ },
+ "poire_prop_Kador": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ],
+  "components": [
+   {
+    "index": 0,
+    "template": 406
+   },
+   {
+    "index": 1,
+    "template": 407
+   },
+   {
+    "index": 2,
+    "template": 376
+   },
+   {
+    "index": 3,
+    "template": 317
+   }
+  ]
+ },
+ "poire_ressort_Kador": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ],
+  "components": [
+   {
+    "index": 0,
+    "template": 406
+   },
+   {
+    "index": 1,
+    "template": 407
+   },
+   {
+    "index": 2,
+    "template": 376
+   },
+   {
+    "index": 3,
+    "template": 297
+   }
+  ]
+ },
+ "poire_prop_Enzo": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ],
+  "components": [
+   {
+    "index": 0,
+    "template": 406
+   },
+   {
+    "index": 1,
+    "template": 407
+   },
+   {
+    "index": 2,
+    "template": 376
+   },
+   {
+    "index": 3,
+    "template": 317
+   }
+  ]
+ },
+ "poire_ressort_Enzo": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ],
+  "components": [
+   {
+    "index": 0,
+    "template": 406
+   },
+   {
+    "index": 1,
+    "template": 407
+   },
+   {
+    "index": 2,
+    "template": 376
+   },
+   {
+    "index": 3,
+    "template": 297
+   }
+  ]
  }
 }
