@@ -6,13 +6,8 @@
 // =====================================================================
 
 global ME = getEntity();
-global DBG = false;
 global AGGRO_TURN = 20;  // après ce tour on arrête de jouer la prudence
-global IDLE = 0;         // tours consécutifs sans attaquer
-global USE_IDLE_AGGRO = false;
-global USE_DEBUFF = false;
 global USE_BULBS = true;
-global THREAT_COST = 350;   // (ancien modèle) pénalité par ennemi pouvant me frapper
 global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
 global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
 global SAFE_RATIO = 0.05;
@@ -108,14 +103,8 @@ function nearestFoe() {
 	}
 	return best;
 }
-// on passe à l'offensive : fin de partie, ou on attend depuis 2 tours sans être en retard de vie
-function isAggressive() {
-	if (getTurn() > AGGRO_TURN) return true;
-	if (!USE_IDLE_AGGRO || IDLE < 2) return false;
-	var n = nearestFoe();
-	if (n == null) return false;
-	return getLife() / getTotalLife() >= getLife(n) / getTotalLife(n) - 0.1;
-}
+// on passe à l'offensive en fin de partie (pour éviter les matchs nuls)
+function isAggressive() { return getTurn() > AGGRO_TURN; }
 
 
 function toolCost(tool) { return TOOL_INFO[tool][0]; }
@@ -266,7 +255,6 @@ function planAttack(tp) {
 			if (toolCost(tool) > tp) continue;
 			if (hitValue(tool, e) <= 0) continue;
 			var s = cellsFor(tool, e);
-			if (DBG) debug('  tool ' + (isW(tool) ? getWeaponName(tool) : getChipName(tool)) + ' cells=' + (s == null ? 0 : mapSize(s)) + ' hv=' + hitValue(tool, e));
 			if (s == null) continue;
 			push(usable, tool);
 			push(sets, s);
@@ -298,7 +286,6 @@ function planAttack(tp) {
 }
 
 function execute(plan) {
-	debug('exec ' + [plan[1], getCell(), plan[3]]);
 	var cell = plan[1];
 	var e = plan[2];
 	if (cell != getCell()) moveTowardCell(cell);
@@ -375,21 +362,6 @@ function useBuffs(list) {
 	for (var c in list) if (chipReady(c)) useChip(c, ME);
 }
 
-// portée max des outils offensifs d'un ennemi
-global ENEMY_RANGE = [:];
-function enemyRange(e) {
-	var r = ENEMY_RANGE[e];
-	if (r != null) return r;
-	r = 1;
-	for (var w in getWeapons(e)) r = max(r, getWeaponMaxRange(w));
-	for (var c in getChips(e)) {
-		for (var ef in getChipEffects(c)) {
-			if (ef[0] == EFFECT_DAMAGE || ef[0] == EFFECT_POISON) { r = max(r, getChipMaxRange(c)); break; }
-		}
-	}
-	ENEMY_RANGE[e] = r;
-	return r;
-}
 
 
 // ---------- menace en dégâts ----------
@@ -454,15 +426,6 @@ function danger(cell) {
 	return max(0, total * shield - getAbsoluteShield());
 }
 
-// nombre d'ennemis (non bulbes) qui pourront me frapper sur cette case au prochain tour (approx.)
-function threatCount(cell) {
-	var n = 0;
-	for (var e in foes()) {
-		if (isSummon(e)) continue;
-		if (getCellDistance(cell, getCell(e)) <= getTotalMP(e) + enemyRange(e)) n++;
-	}
-	return n;
-}
 
 // se placer : hors menace si possible (au plus près), sinon caché, sinon loin
 function position() {
@@ -588,26 +551,12 @@ function summonBulbs() {
 }
 
 
-// retire boucliers / boosts de la cible si ça vaut le coup
-function debuffTarget(t) {
-	if (!USE_DEBUFF) return false;
-	var buffed = getAbsoluteShield(t) >= 80 || getRelativeShield(t) >= 15
-		|| hasEffect(t, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH, EFFECT_DAMAGE_RETURN]);
-	if (!buffed) return false;
-	for (var c in CLEANSE_CHIPS) {
-		var isDebuff = false;
-		for (var ef in getChipEffects(c)) if (ef[0] == EFFECT_DEBUFF) isDebuff = true;
-		if (isDebuff && chipReady(c) && canUseChip(c, t)) { useChip(c, t); return true; }
-	}
-	return false;
-}
 
 
 // =====================================================================
 //  Rôle soutien (poireau "science") : booste, protège et soigne les alliés
 // =====================================================================
 global SUPPORT_MIN_SCIENCE = 200;
-global DBG_SUPPORT = false;
 function isSupport() { return getScience() >= SUPPORT_MIN_SCIENCE; }
 
 // alliés combattants (poireaux, pas les bulbes), le plus proche de l'ennemi d'abord
@@ -649,9 +598,7 @@ function buffAllies(chip, allies) {
 	for (var a in allies) {
 		if (hasChipEffect(a, chip)) continue;
 		if (canUseChip(chip, a)) {
-			var r = useChip(chip, a);
-			if (DBG_SUPPORT) debug('use ' + getChipName(chip) + ' -> ' + getName(a) + ' = ' + r + ' tp=' + getTP());
-			if (r > 0) return true;
+			if (useChip(chip, a) > 0) return true;
 		}
 	}
 	return false;
@@ -692,14 +639,8 @@ function supportTurn() {
 		for (var c in heals) if (chipReady(c) && canUseChip(c, hurt)) useChip(c, hurt);
 	}
 	// 3. boosts : PT d'abord, puis force, puis le reste, sur les alliés les plus avancés
-	if (DBG_SUPPORT) {
-		for (var a in allies) debug('ally ' + getName(a) + ' dist=' + getCellDistance(getCell(), getCell(a)));
-		debug('TP=' + TP_BUFF_CHIPS + ' STR=' + STR_BUFF_CHIPS + ' OTHER=' + OTHER_BUFF_CHIPS + ' SH=' + SHIELD_CHIPS + ' tp=' + getTP());
-		for (var c in STR_BUFF_CHIPS) for (var a in allies) if (getCellDistance(getCell(), getCell(a)) <= 6) debug('  ' + getChipName(c) + ' -> ' + getName(a) + ' d=' + getCellDistance(getCell(), getCell(a)) + ' r=' + getChipMinRange(c) + '-' + getChipMaxRange(c) + ' los=' + lineOfSight(getCell(), getCell(a)) + ' can=' + canUseChip(c, a) + ' onCell=' + canUseChipOnCell(c, getCell(a)) + ' isAlly=' + isAlly(a) + ' cd=' + getCooldown(c));
-	}
 	var buffs = TP_BUFF_CHIPS + STR_BUFF_CHIPS + MP_BUFF_CHIPS + OTHER_BUFF_CHIPS;
 	buffs = arraySort(buffs, function(a, b) { return buffValue(b) - buffValue(a); });
-	if (DBG_SUPPORT) for (var c in buffs) debug('buff ' + getChipName(c) + ' v=' + buffValue(c) + ' ready=' + chipReady(c));
 	for (var c in buffs) buffAllies(c, allies);
 	// 4. boucliers : l'allié de tête (le plus exposé), puis moi
 	var exposed = count(allies) > 0 ? [allies[0]] : [];
@@ -742,10 +683,8 @@ if (isSupport()) {
 	}
 
 	if (plan != null) {
-		IDLE = 0;
 		// on peut taper ce tour : boosts PT d'abord, puis force si ça laisse de quoi frapper
 		useBuffs(TP_BUFF_CHIPS);
-		if (debuffTarget(plan[2])) plan = planAttack(getTP());
 		if (plan == null) plan = planAttack(getTP());
 		for (var c in STR_BUFF_CHIPS) {
 			if (chipReady(c) && getTP() - getChipCost(c) >= 6) useChip(c, ME);
@@ -757,7 +696,6 @@ if (isSupport()) {
 			if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
 		}
 	} else {
-		IDLE++;
 		// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie
 		summonBulbs();
 		position();
@@ -776,4 +714,3 @@ if (isSupport()) {
 	summonBulbs();
 	position();
 }
-debug('end tp=' + getTP() + ' mp=' + getMP() + ' cell=' + getCell());
