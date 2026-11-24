@@ -9,6 +9,8 @@ global ME = getEntity();
 global DBG = false;
 global AGGRO_TURN = 12;  // après ce tour on arrête de jouer la prudence
 global IDLE = 0;         // tours consécutifs sans attaquer
+global USE_IDLE_AGGRO = true;
+global USE_DEBUFF = true;
 global USE_BULBS = true;
 global THREAT_COST = 350;   // pénalité par ennemi pouvant me frapper sur la case d'attaque
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
@@ -100,7 +102,7 @@ function nearestFoe() {
 // on passe à l'offensive : fin de partie, ou on attend depuis 2 tours sans être en retard de vie
 function isAggressive() {
 	if (getTurn() > AGGRO_TURN) return true;
-	if (IDLE < 2) return false;
+	if (!USE_IDLE_AGGRO || IDLE < 2) return false;
 	var n = nearestFoe();
 	if (n == null) return false;
 	return getLife() / getTotalLife() >= getLife(n) / getTotalLife(n) - 0.1;
@@ -484,6 +486,7 @@ function summonBulbs() {
 
 // retire boucliers / boosts de la cible si ça vaut le coup
 function debuffTarget(t) {
+	if (!USE_DEBUFF) return false;
 	var buffed = getAbsoluteShield(t) >= 80 || getRelativeShield(t) >= 15
 		|| hasEffect(t, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH, EFFECT_DAMAGE_RETURN]);
 	if (!buffed) return false;
