@@ -313,9 +313,16 @@ function execute(plan) {
 		for (var n = 0; n < p[1]; n++) {
 			if (!isAlive(e)) return;
 			if (isW(tool)) {
-				if (getWeapon() != tool) setWeapon(tool);
+				// changer d'arme coûte 1 PT : ne le faire que si on pourra tirer ensuite
+				if (getWeapon() != tool) {
+					if (getTP() < getWeaponCost(tool) + 1) break;
+					setWeapon(tool);
+				}
+				// la case visée a pu ne pas être atteinte (chemin bloqué) : vérifier portée et ligne de vue
+				if (getWeapon() != tool || !canUseWeapon(tool, e)) break;
 				if (useWeapon(e) < 0) break;
 			} else {
+				if (!canUseChip(tool, e)) break;
 				if (useChip(tool, e) < 0) break;
 			}
 		}
