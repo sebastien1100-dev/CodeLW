@@ -16,6 +16,7 @@ global THREAT_COST = 350;   // (ancien modèle) pénalité par ennemi pouvant me
 global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
 global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
 global SAFE_RATIO = 0.05;
+global CRIT_BONUS = 0.3;    // un coup critique fait x1.3 de dégâts
 global FRIENDLY_W = 1.5;    // poids des dégâts infligés à nos alliés/bulbes/nous-même par une arme de zone
 global SUPPORT_RANGE = 5;   // portée typique des boosts sur allié
 global FOCUS_MULT = 1.4;    // bonus pour la cible commune de l'équipe (combats à plusieurs)   // en dessous de ce % de ma vie, une case est considérée sûre
@@ -133,11 +134,14 @@ function damageReturnOf(e) {
 }
 
 // dégât espéré d'une utilisation de tool sur e
+// dégâts moyens avec les coups critiques : x1.3, probabilité ~ agilité / 1000
+function critFactor(ent) { return 1 + CRIT_BONUS * min(1, max(0, getAgility(ent)) / 1000); }
+
 function hitValue(tool, e) {
 	var i = TOOL_INFO[tool];
 	var v = 0;
 	if (i[2] > 0) {
-		var d = (i[1] + i[2]) / 2 * (1 + getStrength() / 100);
+		var d = (i[1] + i[2]) / 2 * (1 + getStrength() / 100) * critFactor(ME);
 		d = d * (1 - getRelativeShield(e) / 100) - getAbsoluteShield(e);
 		if (d > 0) v += d;
 	}
@@ -458,7 +462,7 @@ function enemyProfile(e) {
 	var p = PROFILE[e];
 	if (p != null) return p;
 	p = [];
-	var str = 1 + max(0, getStrength(e)) / 100;
+	var str = (1 + max(0, getStrength(e)) / 100) * critFactor(e);
 	var mag = 1 + max(0, getMagic(e)) / 100;
 	for (var w in getWeapons(e)) {
 		var d = 0;
