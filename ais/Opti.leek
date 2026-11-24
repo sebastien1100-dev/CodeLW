@@ -7,7 +7,8 @@
 
 global ME = getEntity();
 global DBG = false;
-global AGGRO_TURN = 20;  // après ce tour on arrête de jouer la prudence
+global AGGRO_TURN = 12;  // après ce tour on arrête de jouer la prudence
+global IDLE = 0;         // tours consécutifs sans attaquer
 global USE_BULBS = true;
 global THREAT_COST = 350;   // pénalité par ennemi pouvant me frapper sur la case d'attaque
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
@@ -79,6 +80,33 @@ function register(tool, isW) {
 if (getTurn() == 1) classify();
 
 // ---------- utilitaires ----------
+// ennemis qui combattent : on ignore les entités statiques (coffres...) sauf s'il ne reste qu'elles
+function isStatic(e) {
+	return getTotalMP(e) == 0 && count(getWeapons(e)) == 0 && count(getChips(e)) == 0;
+}
+function foes() {
+	var res = [];
+	for (var e in getAliveEnemies()) if (!isStatic(e)) push(res, e);
+	return count(res) > 0 ? res : getAliveEnemies();
+}
+function nearestFoe() {
+	var best = null, bd = 100000;
+	for (var e in foes()) {
+		var d = getCellDistance(getCell(), getCell(e));
+		if (d < bd) { bd = d; best = e; }
+	}
+	return best;
+}
+// on passe à l'offensive : fin de partie, ou on attend depuis 2 tours sans être en retard de vie
+function isAggressive() {
+	if (getTurn() > AGGRO_TURN) return true;
+	if (IDLE < 2) return false;
+	var n = nearestFoe();
+	if (n == null) return false;
+	return getLife() / getTotalLife() >= getLife(n) / getTotalLife(n) - 0.1;
+}
+
+
 function toolCost(tool) { return TOOL_INFO[tool][0]; }
 function isW(tool) { return TOOL_INFO[tool][6]; }
 
@@ -198,10 +226,10 @@ function targetScore(e, dmg) {
 
 // meilleur plan : [score, cell, enemy, combo]
 function planAttack(tp) {
-	var aggressive = getTurn() > AGGRO_TURN;
+	var aggressive = isAggressive();
 	var reach = reachable(getMP());
 	var best = null;
-	for (var e in getAliveEnemies()) {
+	for (var e in foes()) {
 		var usable = [];
 		var sets = [];
 		for (var tool in DMG_TOOLS) {
@@ -294,7 +322,7 @@ function cleanseIfPoisoned() {
 
 function enemyThreatens() {
 	// un ennemi peut-il me toucher au prochain tour ? (approximation)
-	for (var e in getAliveEnemies()) {
+	for (var e in foes()) {
 		if (getCellDistance(getCell(), getCell(e)) <= getMP(e) + 10) return true;
 	}
 	return false;
@@ -323,7 +351,7 @@ function enemyRange(e) {
 // nombre d'ennemis (non bulbes) qui pourront me frapper sur cette case au prochain tour (approx.)
 function threatCount(cell) {
 	var n = 0;
-	for (var e in getAliveEnemies()) {
+	for (var e in foes()) {
 		if (isSummon(e)) continue;
 		if (getCellDistance(cell, getCell(e)) <= getTotalMP(e) + enemyRange(e)) n++;
 	}
@@ -333,14 +361,14 @@ function threatCount(cell) {
 // se placer : hors menace si possible (au plus près), sinon caché, sinon loin
 function position() {
 	if (getMP() <= 0) return;
-	var aggressive = getTurn() > AGGRO_TURN;
+	var aggressive = isAggressive();
 	var reach = reachable(getMP());
 	var bestCell = getCell();
 	var bestScore = -1000000;
 	for (var cell : var dist in reach) {
 		var seen = 0;
 		var minD = 1000;
-		for (var e in getAliveEnemies()) {
+		for (var e in foes()) {
 			if (isSummon(e)) continue;
 			if (lineOfSight(getCell(e), cell, [getCell(e), getCell()])) seen++;
 			minD = min(minD, getCellDistance(cell, getCell(e)));
@@ -409,7 +437,7 @@ function bulbAI() {
 		}
 	}
 	// attaque : l'ennemi le plus proche
-	var e = getNearestEnemy();
+	var e = nearestFoe();
 	if (e != null) {
 		for (var c in attacks) {
 			if (getCooldown(c) > 0 || getChipCost(c) > getTP()) continue;
@@ -445,12 +473,26 @@ function summonBulbs() {
 				var c = getCellFromXY(x0 + dx, y0 + dy);
 				if (c == null || !isEmptyCell(c) || !lineOfSight(from, c)) continue;
 				var minD = 1000;
-				for (var e in getAliveEnemies()) minD = min(minD, getCellDistance(c, getCell(e)));
+				for (var e in foes()) minD = min(minD, getCellDistance(c, getCell(e)));
 				if (minD > bestD) { bestD = minD; bestCell = c; }
 			}
 		}
 		if (bestCell != null) summon(chip, bestCell, bulbAI);
 	}
+}
+
+
+// retire boucliers / boosts de la cible si ça vaut le coup
+function debuffTarget(t) {
+	var buffed = getAbsoluteShield(t) >= 80 || getRelativeShield(t) >= 15
+		|| hasEffect(t, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH, EFFECT_DAMAGE_RETURN]);
+	if (!buffed) return false;
+	for (var c in CLEANSE_CHIPS) {
+		var isDebuff = false;
+		for (var ef in getChipEffects(c)) if (ef[0] == EFFECT_DEBUFF) isDebuff = true;
+		if (isDebuff && chipReady(c) && canUseChip(c, t)) { useChip(c, t); return true; }
+	}
+	return false;
 }
 
 // =====================================================================
@@ -476,8 +518,11 @@ if (plan == null && count(MP_BUFF_CHIPS) > 0) {
 }
 
 if (plan != null) {
+	IDLE = 0;
 	// on peut taper ce tour : boosts PT d'abord, puis force si ça laisse de quoi frapper
 	useBuffs(TP_BUFF_CHIPS);
+	if (debuffTarget(plan[2])) plan = planAttack(getTP());
+	if (plan == null) plan = planAttack(getTP());
 	for (var c in STR_BUFF_CHIPS) {
 		if (chipReady(c) && getTP() - getChipCost(c) >= 6) useChip(c, ME);
 	}
@@ -488,6 +533,7 @@ if (plan != null) {
 		if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
 	}
 } else {
+	IDLE++;
 	// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie
 	summonBulbs();
 	position();
