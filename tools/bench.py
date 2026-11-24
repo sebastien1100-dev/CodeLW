@@ -181,6 +181,8 @@ def main():
         report(f"{args.hero} [{args.ai2}]", duel(args, args.ai2))
     elif args.cmd == "team":
         report(f"4c4 [{args.ai}] contre bots", team(args))
+    if args.cmd != "upload":
+        lw.api("DELETE", "ai/delete", path=args.path)  # ne pas laisser le fichier de scénario dans l'éditeur
 
 
 if __name__ == "__main__":
