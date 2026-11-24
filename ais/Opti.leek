@@ -12,7 +12,10 @@ global IDLE = 0;         // tours consécutifs sans attaquer
 global USE_IDLE_AGGRO = false;
 global USE_DEBUFF = false;
 global USE_BULBS = true;
-global THREAT_COST = 350;   // pénalité par ennemi pouvant me frapper sur la case d'attaque
+global THREAT_COST = 350;   // (ancien modèle) pénalité par ennemi pouvant me frapper
+global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
+global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
+global SAFE_RATIO = 0.05;   // en dessous de ce % de ma vie, une case est considérée sûre
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
 global POISON_WEIGHT = 0.6;     // un poison vaut moins qu'un dégât direct (peut être soigné / dilué)
 global SUMMON_WEIGHT = 0.5;     // priorité plus faible sur les bulbes
@@ -260,8 +263,8 @@ function planAttack(tp) {
 			var sc = targetScore(e, r[0]) - dist * 15;
 			if (!aggressive) {
 				// attaquer depuis une case menacée coûte cher, surtout sans PM pour repartir
-				var th = threatCount(cell);
-				if (th > 0) sc -= th * THREAT_COST * (getMP() - dist <= 1 ? 1 : 0.5);
+				var dg = danger(cell);
+				if (dg > 0) sc -= dg * DANGER_W * (getMP() - dist <= 1 ? 1 : 0.5);
 			}
 			if (best == null || sc > best[0]) best = [sc, cell, e, r[1]];
 		}
@@ -350,6 +353,69 @@ function enemyRange(e) {
 	return r;
 }
 
+
+// ---------- menace en dégâts ----------
+// profil offensif d'un ennemi pour son prochain tour : [[coût, dégât moyen, portée min, portée max, utilisations], ...]
+global PROFILE = [:];
+global PROFILE_TURN = -1;
+function enemyProfile(e) {
+	if (PROFILE_TURN != getTurn()) { PROFILE = [:]; PROFILE_TURN = getTurn(); }
+	var p = PROFILE[e];
+	if (p != null) return p;
+	p = [];
+	var str = 1 + max(0, getStrength(e)) / 100;
+	var mag = 1 + max(0, getMagic(e)) / 100;
+	for (var w in getWeapons(e)) {
+		var d = 0;
+		for (var ef in getWeaponEffects(w)) {
+			if (ef[0] == EFFECT_DAMAGE) d += (ef[1] + ef[2]) / 2 * str;
+			else if (ef[0] == EFFECT_POISON) d += (ef[1] + ef[2]) / 2 * mag * ef[3] * POISON_WEIGHT;
+		}
+		var u = getWeaponMaxUses(w);
+		if (d > 0) push(p, [getWeaponCost(w) + 0.0, d, getWeaponMinRange(w), getWeaponMaxRange(w), u <= 0 ? 10 : u]);
+	}
+	for (var c in getChips(e)) {
+		if (getCooldown(c, e) > 1) continue;  // pas dispo à son prochain tour
+		var d = 0;
+		for (var ef in getChipEffects(c)) {
+			if (ef[0] == EFFECT_DAMAGE) d += (ef[1] + ef[2]) / 2 * str;
+			else if (ef[0] == EFFECT_POISON) d += (ef[1] + ef[2]) / 2 * mag * ef[3] * POISON_WEIGHT;
+		}
+		var u = getChipCooldown(c) > 0 ? 1 : getChipMaxUses(c);
+		if (d > 0) push(p, [getChipCost(c) + 0.0, d, getChipMinRange(c), getChipMaxRange(c), u <= 0 ? 10 : u]);
+	}
+	// meilleur rendement d'abord
+	p = arraySort(p, function(a, b) { return b[1] / b[0] - a[1] / a[0]; });
+	PROFILE[e] = p;
+	return p;
+}
+
+// dégâts que les ennemis peuvent m'infliger sur `cell` à leur prochain tour (estimation prudente)
+function danger(cell) {
+	var total = 0;
+	var shield = 1 - getRelativeShield() / 100;
+	for (var e in foes()) {
+		if (isStatic(e)) continue;
+		var mp = getTotalMP(e);
+		var dist = getCellDistance(cell, getCell(e));
+		var tp = getTotalTP(e);
+		var dmg = 0;
+		for (var t in enemyProfile(e)) {
+			if (dist > mp + t[3]) continue;          // hors d'atteinte même en avançant
+			var n = min(t[4], floor(tp / t[0]));
+			if (n <= 0) continue;
+			dmg += n * t[1];
+			tp -= n * t[0];
+			if (tp <= 0) break;
+		}
+		if (dmg <= 0) continue;
+		// sans ligne de vue depuis sa position actuelle, il doit encore se déplacer pour tirer
+		if (!lineOfSight(getCell(e), cell, [getCell(e), getCell()])) dmg *= LOS_FACTOR;
+		total += dmg;
+	}
+	return max(0, total * shield - getAbsoluteShield());
+}
+
 // nombre d'ennemis (non bulbes) qui pourront me frapper sur cette case au prochain tour (approx.)
 function threatCount(cell) {
 	var n = 0;
@@ -375,10 +441,10 @@ function position() {
 			if (lineOfSight(getCell(e), cell, [getCell(e), getCell()])) seen++;
 			minD = min(minD, getCellDistance(cell, getCell(e)));
 		}
-		var t = aggressive ? 0 : threatCount(cell);
+		var dg = aggressive ? 0 : danger(cell);
 		var sc;
-		if (t == 0) sc = -seen * 30 - minD;           // sûr : on reste au contact
-		else sc = -t * 1000 - seen * 200 + minD * 5;  // menacé : caché puis loin
+		if (dg <= getLife() * SAFE_RATIO) sc = 100000 - seen * 30 - minD;  // sûr : on reste au contact
+		else sc = -dg - seen * 50 + minD * 3;                               // exposé : le moins de dégâts possible
 		if (sc > bestScore) { bestScore = sc; bestCell = cell; }
 	}
 	if (bestCell != getCell()) moveTowardCell(bestCell);
