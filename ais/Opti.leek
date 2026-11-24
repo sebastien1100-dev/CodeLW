@@ -16,6 +16,7 @@ global THREAT_COST = 350;   // (ancien modèle) pénalité par ennemi pouvant me
 global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
 global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
 global SAFE_RATIO = 0.05;
+global SUPPORT_RANGE = 5;   // portée typique des boosts sur allié
 global FOCUS_MULT = 1.4;    // bonus pour la cible commune de l'équipe (combats à plusieurs)   // en dessous de ce % de ma vie, une case est considérée sûre
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
 global POISON_WEIGHT = 0.6;     // un poison vaut moins qu'un dégât direct (peut être soigné / dilué)
@@ -32,6 +33,7 @@ global MP_BUFF_CHIPS;
 global RETURN_CHIPS;
 global CLEANSE_CHIPS;  // antidote / libération
 global SUMMON_CHIPS;
+global OTHER_BUFF_CHIPS;  // sagesse, résistance, agilité, vitalité (utile au soutien)
 global TOOL_INFO;      // map tool -> [cost, dmgMin, dmgMax, poisonMin, poisonMax, poisonTurns, isWeapon, maxUses]
 
 function effectsOf(tool, isW) {
@@ -40,7 +42,7 @@ function effectsOf(tool, isW) {
 
 function classify() {
 	DMG_TOOLS = []; HEAL_CHIPS = []; SHIELD_CHIPS = []; TP_BUFF_CHIPS = [];
-	STR_BUFF_CHIPS = []; MP_BUFF_CHIPS = []; RETURN_CHIPS = []; CLEANSE_CHIPS = []; SUMMON_CHIPS = [];
+	STR_BUFF_CHIPS = []; MP_BUFF_CHIPS = []; RETURN_CHIPS = []; CLEANSE_CHIPS = []; SUMMON_CHIPS = []; OTHER_BUFF_CHIPS = [];
 	TOOL_INFO = [:];
 	for (var w in getWeapons()) {
 		register(w, true);
@@ -52,7 +54,7 @@ function classify() {
 
 function register(tool, isW) {
 	var dMin = 0, dMax = 0, pMin = 0, pMax = 0, pTurns = 0;
-	var summ = false, after = false, heal = false, shield = false, tpb = false, strb = false, mpb = false, ret = false, clean = false;
+	var otherb = false, summ = false, after = false, heal = false, shield = false, tpb = false, strb = false, mpb = false, ret = false, clean = false;
 	for (var e in effectsOf(tool, isW)) {
 		var t = e[0];
 		if (t == EFFECT_DAMAGE) { dMin += e[1]; dMax += e[2]; }
@@ -66,6 +68,8 @@ function register(tool, isW) {
 		else if (t == EFFECT_ANTIDOTE || t == EFFECT_DEBUFF) clean = true;
 		else if (t == EFFECT_AFTEREFFECT) after = true;
 		else if (t == EFFECT_SUMMON) summ = true;
+		else if (t == EFFECT_RAW_BUFF_WISDOM || t == EFFECT_BUFF_WISDOM || t == EFFECT_RAW_BUFF_RESISTANCE || t == EFFECT_BUFF_RESISTANCE
+			|| t == EFFECT_RAW_BUFF_AGILITY || t == EFFECT_BUFF_AGILITY || t == EFFECT_BOOST_MAX_LIFE) otherb = true;
 	}
 	var cost = isW ? getWeaponCost(tool) : getChipCost(tool);
 	var uses = isW ? getWeaponMaxUses(tool) : getChipMaxUses(tool);
@@ -81,6 +85,7 @@ function register(tool, isW) {
 	else if (mpb) push(MP_BUFF_CHIPS, tool);
 	else if (ret) push(RETURN_CHIPS, tool);
 	else if (clean) push(CLEANSE_CHIPS, tool);
+	else if (otherb) push(OTHER_BUFF_CHIPS, tool);
 }
 
 if (getTurn() == 1) classify();
@@ -319,6 +324,13 @@ function execute(plan) {
 
 // ---------- phases ----------
 function lifeRatio(e) { return getLife(e) / getTotalLife(e); }
+
+// soin attendu d'une puce (la sagesse du lanceur multiplie les soins)
+function healAmount(c) {
+	var h = 0;
+	for (var ef in getChipEffects(c)) if (ef[0] == EFFECT_HEAL) h += (ef[1] + ef[2]) / 2 * max(1, ef[3]);
+	return h * (1 + getWisdom() / 100);
+}
 
 function healSelf(threshold) {
 	if (lifeRatio(ME) >= threshold) return;
@@ -583,60 +595,178 @@ function debuffTarget(t) {
 	return false;
 }
 
+
+// =====================================================================
+//  Rôle soutien (poireau "science") : booste, protège et soigne les alliés
+// =====================================================================
+global SUPPORT_MIN_SCIENCE = 200;
+global DBG_SUPPORT = false;
+function isSupport() { return getScience() >= SUPPORT_MIN_SCIENCE; }
+
+// alliés combattants (poireaux, pas les bulbes), le plus proche de l'ennemi d'abord
+function fighters() {
+	var res = [];
+	for (var a in getAliveAllies()) if (a != ME && !isSummon(a)) push(res, a);
+	var n = nearestFoe();
+	if (n == null) return res;
+	return arraySort(res, function(a, b) { return getCellDistance(getCell(a), getCell(n)) - getCellDistance(getCell(b), getCell(n)); });
+}
+
+// l'allié porte-t-il déjà l'effet de cette puce ?
+function hasChipEffect(a, chip) {
+	for (var ef in getEffects(a)) if (ef[5] == chip) return true;
+	return false;
+}
+
+// valeur d'un boost : les effets "bruts" ne dépendent pas de la science, les autres sont multipliés par (1 + science/100)
+function buffValue(chip) {
+	var v = 0;
+	var sci = 1 + getScience() / 100;
+	for (var ef in getChipEffects(chip)) {
+		var t = ef[0], avg = (ef[1] + ef[2]) / 2, turns = max(1, ef[3]);
+		if (t == EFFECT_BUFF_STRENGTH) v += avg * sci * turns;
+		else if (t == EFFECT_RAW_BUFF_STRENGTH) v += avg * turns;
+		else if (t == EFFECT_BUFF_TP) v += avg * sci * turns * 120;     // 1 PT ~ 120 de force
+		else if (t == EFFECT_RAW_BUFF_TP) v += avg * turns * 120;
+		else if (t == EFFECT_BUFF_MP) v += avg * sci * turns * 40;
+		else if (t == EFFECT_RAW_BUFF_MP) v += avg * turns * 40;
+		else if (t == EFFECT_BUFF_WISDOM || t == EFFECT_BUFF_RESISTANCE || t == EFFECT_BUFF_AGILITY) v += avg * sci * turns * 0.4;
+		else if (t == EFFECT_RAW_BUFF_WISDOM || t == EFFECT_RAW_BUFF_RESISTANCE || t == EFFECT_RAW_BUFF_AGILITY) v += avg * turns * 0.4;
+	}
+	return v / getChipCost(chip);
+}
+
+// lance `chip` sur le premier allié de la liste qui est à portée et pas encore boosté
+function buffAllies(chip, allies) {
+	if (!chipReady(chip)) return false;
+	for (var a in allies) {
+		if (hasChipEffect(a, chip)) continue;
+		if (canUseChip(chip, a)) {
+			var r = useChip(chip, a);
+			if (DBG_SUPPORT) debug('use ' + getChipName(chip) + ' -> ' + getName(a) + ' = ' + r + ' tp=' + getTP());
+			if (r > 0) return true;
+		}
+	}
+	return false;
+}
+
+// case où se placer : d'où l'on peut booster le plus d'alliés (portée + ligne de vue), l'allié de tête compte double,
+// en limitant les dégâts encaissables ; si personne n'est boostable, on se rapproche de l'allié de tête
+function supportCell(allies, dangerWeight) {
+	var reach = reachable(getMP());
+	if (count(allies) == 0) return getCell();
+	var front = allies[0];
+	var best = getCell(), bestSc = -1000000;
+	for (var cell : var dist in reach) {
+		var near = 0;
+		for (var a in allies) {
+			var ac = getCell(a);
+			if (getCellDistance(cell, ac) <= SUPPORT_RANGE && lineOfSight(cell, ac, [ac, getCell()])) near += (a == front ? 2 : 1);
+		}
+		var sc = near * 150 - danger(cell) * dangerWeight - dist * 2;
+		if (near == 0) sc -= getCellDistance(cell, getCell(front)) * 20;
+		if (sc > bestSc) { bestSc = sc; best = cell; }
+	}
+	return best;
+}
+
+function supportTurn() {
+	cleanseIfPoisoned();
+	resurrectAlly();
+	var allies = fighters();
+	// 1. se rapprocher du groupe pour être à portée
+	var cell = supportCell(allies, 0.3);
+	if (cell != getCell()) moveTowardCell(cell);
+	// 2. soins : l'allié le plus blessé (moi compris)
+	var hurt = ME;
+	for (var a in allies) if (lifeRatio(a) < lifeRatio(hurt)) hurt = a;
+	if (lifeRatio(hurt) < 0.7) {
+		var heals = arraySort(HEAL_CHIPS, function(a, b) { return healAmount(b) - healAmount(a); });
+		for (var c in heals) if (chipReady(c) && canUseChip(c, hurt)) useChip(c, hurt);
+	}
+	// 3. boosts : PT d'abord, puis force, puis le reste, sur les alliés les plus avancés
+	if (DBG_SUPPORT) {
+		for (var a in allies) debug('ally ' + getName(a) + ' dist=' + getCellDistance(getCell(), getCell(a)));
+		debug('TP=' + TP_BUFF_CHIPS + ' STR=' + STR_BUFF_CHIPS + ' OTHER=' + OTHER_BUFF_CHIPS + ' SH=' + SHIELD_CHIPS + ' tp=' + getTP());
+		for (var c in STR_BUFF_CHIPS) for (var a in allies) if (getCellDistance(getCell(), getCell(a)) <= 6) debug('  ' + getChipName(c) + ' -> ' + getName(a) + ' d=' + getCellDistance(getCell(), getCell(a)) + ' r=' + getChipMinRange(c) + '-' + getChipMaxRange(c) + ' los=' + lineOfSight(getCell(), getCell(a)) + ' can=' + canUseChip(c, a) + ' onCell=' + canUseChipOnCell(c, getCell(a)) + ' isAlly=' + isAlly(a) + ' cd=' + getCooldown(c));
+	}
+	var buffs = TP_BUFF_CHIPS + STR_BUFF_CHIPS + MP_BUFF_CHIPS + OTHER_BUFF_CHIPS;
+	buffs = arraySort(buffs, function(a, b) { return buffValue(b) - buffValue(a); });
+	if (DBG_SUPPORT) for (var c in buffs) debug('buff ' + getChipName(c) + ' v=' + buffValue(c) + ' ready=' + chipReady(c));
+	for (var c in buffs) buffAllies(c, allies);
+	// 4. boucliers : l'allié de tête (le plus exposé), puis moi
+	var exposed = count(allies) > 0 ? [allies[0]] : [];
+	push(exposed, ME);
+	for (var c in SHIELD_CHIPS) buffAllies(c, exposed);
+	for (var c in RETURN_CHIPS) buffAllies(c, exposed);
+	// 5. bulbes, attaque avec ce qui reste, soins restants
+	summonBulbs();
+	var plan = planAttack(getTP());
+	if (plan != null) execute(plan);
+	for (var c in HEAL_CHIPS) if (chipReady(c) && lifeRatio(hurt) < 0.9 && canUseChip(c, hurt)) useChip(c, hurt);
+	// 6. se replier près du groupe
+	cell = supportCell(fighters(), 1);
+	if (cell != getCell()) moveTowardCell(cell);
+}
+
 // =====================================================================
 //  Tour
 // =====================================================================
-cleanseIfPoisoned();
-healSelf(0.4);
-resurrectAlly();
-
-var plan = planAttack(getTP());
-debug('T' + getTurn() + ' life=' + getLife() + ' tp=' + getTP() + ' mp=' + getMP() + ' str=' + getStrength() + ' plan=' + (plan == null ? 'null' : [plan[0], plan[1], getName(plan[2]), plan[3]]) + ' dmgTools=' + DMG_TOOLS);
-
-if (plan == null && count(MP_BUFF_CHIPS) > 0) {
-	// personne à portée : bottes puis on recalcule
-	// on simule d'abord : les bottes ne servent que si l'attaque en vaut la peine
-	var ready = [];
-	for (var c in MP_BUFF_CHIPS) if (chipReady(c)) push(ready, c);
-	if (count(ready) > 0) {
-		useChip(ready[0], ME);
-		plan = planAttack(getTP());
-		if (plan != null && plan[0] < BOOTS_MIN_SCORE) plan = null;
-	}
-}
-
-if (plan != null) {
-	IDLE = 0;
-	// on peut taper ce tour : boosts PT d'abord, puis force si ça laisse de quoi frapper
-	useBuffs(TP_BUFF_CHIPS);
-	if (debuffTarget(plan[2])) plan = planAttack(getTP());
-	if (plan == null) plan = planAttack(getTP());
-	for (var c in STR_BUFF_CHIPS) {
-		if (chipReady(c) && getTP() - getChipCost(c) >= 6) useChip(c, ME);
-	}
-	// jusqu'à 3 passes (si la cible meurt on retarget)
-	for (var pass = 0; pass < 3 && plan != null && getTP() > 0; pass++) {
-		execute(plan);
-		plan = planAttack(getTP());
-		if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
-	}
+if (isSupport()) {
+	supportTurn();
 } else {
-	IDLE++;
-	// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie
+	cleanseIfPoisoned();
+	healSelf(0.4);
+	resurrectAlly();
+
+	var plan = planAttack(getTP());
+	debug('T' + getTurn() + ' life=' + getLife() + ' tp=' + getTP() + ' mp=' + getMP() + ' str=' + getStrength() + ' plan=' + (plan == null ? 'null' : [plan[0], plan[1], getName(plan[2]), plan[3]]) + ' dmgTools=' + DMG_TOOLS);
+
+	if (plan == null && count(MP_BUFF_CHIPS) > 0) {
+		// personne à portée : bottes puis on recalcule
+		// on simule d'abord : les bottes ne servent que si l'attaque en vaut la peine
+		var ready = [];
+		for (var c in MP_BUFF_CHIPS) if (chipReady(c)) push(ready, c);
+		if (count(ready) > 0) {
+			useChip(ready[0], ME);
+			plan = planAttack(getTP());
+			if (plan != null && plan[0] < BOOTS_MIN_SCORE) plan = null;
+		}
+	}
+
+	if (plan != null) {
+		IDLE = 0;
+		// on peut taper ce tour : boosts PT d'abord, puis force si ça laisse de quoi frapper
+		useBuffs(TP_BUFF_CHIPS);
+		if (debuffTarget(plan[2])) plan = planAttack(getTP());
+		if (plan == null) plan = planAttack(getTP());
+		for (var c in STR_BUFF_CHIPS) {
+			if (chipReady(c) && getTP() - getChipCost(c) >= 6) useChip(c, ME);
+		}
+		// jusqu'à 3 passes (si la cible meurt on retarget)
+		for (var pass = 0; pass < 3 && plan != null && getTP() > 0; pass++) {
+			execute(plan);
+			plan = planAttack(getTP());
+			if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
+		}
+	} else {
+		IDLE++;
+		// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie
+		summonBulbs();
+		position();
+	}
+
+	// PT restants
+	healSelf(0.6);
+	healAllies();
+	if (enemyThreatens()) {
+		useBuffs(SHIELD_CHIPS);
+		useBuffs(RETURN_CHIPS);
+		if (!hasEffect(ME, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH]))
+			for (var c in STR_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }  // préparer le tour suivant
+	}
+	healSelf(0.9);
 	summonBulbs();
 	position();
 }
-
-// PT restants
-healSelf(0.6);
-healAllies();
-if (enemyThreatens()) {
-	useBuffs(SHIELD_CHIPS);
-	useBuffs(RETURN_CHIPS);
-	if (!hasEffect(ME, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH]))
-		for (var c in STR_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }  // préparer le tour suivant
-}
-healSelf(0.9);
-summonBulbs();
-position();
 debug('end tp=' + getTP() + ' mp=' + getMP() + ' cell=' + getCell());

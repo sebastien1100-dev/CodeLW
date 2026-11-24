@@ -89,5 +89,32 @@
    "cure"
   ]
  },
- "_doc": "Équipements testables avec bench.py --kit. Sans 'components', ceux du vrai poireau sont repris."
+ "_doc": "Équipements testables avec bench.py --kit. Sans 'components', ceux du vrai poireau sont repris.",
+ "kit_soutien": {
+  "weapons": [
+   "b_laser"
+  ],
+  "chips": [
+   "ferocity",
+   "rage",
+   "collar",
+   "bark",
+   "reflexes",
+   "acceleration",
+   "seven_league_boots",
+   "steroid",
+   "protein",
+   "motivation",
+   "adrenaline",
+   "prism",
+   "knowledge",
+   "solidification",
+   "carapace",
+   "fortress",
+   "remission",
+   "regeneration",
+   "liberation",
+   "healer_bulb"
+  ]
+ }
 }

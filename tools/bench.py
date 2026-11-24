@@ -17,6 +17,9 @@ Exemples :
   # 4 contre 4 : nos poireaux contre les bots "expert"
   python3 tools/bench.py team --ai Opti --seeds 6
 
+  # 4 contre 4 avec jessy remplacé par un clone "soutien" (répartition + équipement)
+  python3 tools/bench.py team --ai OptiDev --clone jessy=soutien_sci400:kit_soutien --seeds 6
+
   # envoyer un fichier d'IA du dépôt sur Leek Wars
   python3 tools/bench.py upload ais/Opti.leek --as OptiDev
 
@@ -48,24 +51,34 @@ def opponent(o, ai):
     return {"leek": o, "ai": ai}
 
 
+def clone_entry(name, build, kit, ai, verbose=True):
+    """Clone "inline" d'un poireau : stats recalculées depuis une répartition de capital (builds.json),
+    bonus de composants conservés, armes/puces actuelles ou celles d'un kit (kits.json)."""
+    lid = lw.LEEKS[name]
+    l = lw.leek(lid)
+    b = load("builds.json")[build]
+    if l["level"] >= 301 and build + "_niv301" in load("builds.json"):
+        b = load("builds.json")[build + "_niv301"]
+    stats, bought, spent = capital.build_stats(b, l["level"])
+    for k in STATS:  # bonus des composants = total - base achetée
+        stats[k] += l["total_" + k] - l[k]
+    lo = dict(lw.loadout(lid))
+    if kit:
+        lo.update({k: v for k, v in load("kits.json")[kit].items() if k in ("weapons", "chips")})
+    if verbose:
+        print(f"  clone {name} [{build}{'/' + kit if kit else ''}] capital {spent}/{capital.total_capital(l['level'])} -> "
+              + ", ".join(f"{k} {stats[k]}" for k in ("life", "strength", "wisdom", "resistance", "science", "agility", "tp", "mp")))
+    return {"name": (name + "_" + build)[:20], "level": l["level"], "ai": ai,
+            "weapons": lo["weapons"], "chips": lo["chips"], **stats}
+
+
 def hero_entry(args, ai):
-    lid = lw.LEEKS[args.hero]
     if args.build:
-        # clone "inline" : mêmes armes/puces, stats recalculées depuis le capital, bonus de composants conservés
-        l = lw.leek(lid)
-        stats, bought, spent = capital.build_stats(load("builds.json")[args.build], l["level"])
-        for k in STATS:  # bonus des composants = total - base achetée
-            stats[k] += l["total_" + k] - l[k]
-        lo = lw.loadout(lid)
-        entry = {"name": (args.hero + "_" + args.build)[:20], "level": l["level"], "ai": ai,
-                 "weapons": lo["weapons"], "chips": lo["chips"], **stats}
-        print(f"  build {args.build} : capital {spent}/{capital.total_capital(l['level'])} -> "
-              + ", ".join(f"{k} {stats[k]}" for k in ("life", "strength", "wisdom", "resistance", "agility", "tp", "mp")))
-        return entry
+        return clone_entry(args.hero, args.build, args.kit, ai)
     entry = {"leek": args.hero, "ai": ai}
     if args.kit:
         kit = dict(load("kits.json")[args.kit])
-        kit.setdefault("components", lw.loadout(lid)["components"])  # sans composants : 1 cœur, l'IA plante
+        kit.setdefault("components", lw.loadout(lw.LEEKS[args.hero])["components"])  # sans composants : 1 cœur, l'IA plante
         entry["loadout"] = kit
     return entry
 
@@ -114,7 +127,12 @@ def duel(args, ai):
 
 
 def team(args):
-    mine = [{"leek": n, "ai": args.ai} for n in lw.LEEKS]
+    clones = {}
+    for c in args.clone or []:  # nom=répartition[:kit]
+        name, spec = c.split("=")
+        build, _, kit = spec.partition(":")
+        clones[name] = clone_entry(name, build, kit or None, args.ai)
+    mine = [clones.get(n, {"leek": n, "ai": args.ai}) for n in lw.LEEKS]
     bots = [{"bot": b, "ai": "@expert"} for b in lw.BOTS[:4]]
     scenarios = []
     for seed in range(args.seed0, args.seed0 + args.seeds):
@@ -141,6 +159,7 @@ def main():
         s.add_argument("--build", help="répartition de capital de tools/builds.json (clone inline)")
     s = sub.add_parser("team")
     s.add_argument("--ai", default="Opti")
+    s.add_argument("--clone", action="append", help="remplacer un poireau par un clone : nom=répartition[:kit] (répétable)")
     s = sub.add_parser("upload")
     s.add_argument("file")
     s.add_argument("--as", dest="target", required=True, help="chemin du fichier sur Leek Wars")

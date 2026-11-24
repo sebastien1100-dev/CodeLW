@@ -41,5 +41,67 @@
   "wisdom": 100,
   "tp": 9,
   "mp": 2
+ },
+ "sagesse300": {
+  "strength": 500,
+  "resistance": 200,
+  "wisdom": 300,
+  "tp": 9,
+  "mp": 2
+ },
+ "sagesse300_niv301": {
+  "strength": 500,
+  "resistance": 200,
+  "wisdom": 300,
+  "tp": 10,
+  "mp": 2
+ },
+ "sagesse250": {
+  "strength": 500,
+  "resistance": 200,
+  "wisdom": 250,
+  "tp": 9,
+  "mp": 2
+ },
+ "sagesse250_niv301": {
+  "strength": 500,
+  "resistance": 200,
+  "wisdom": 250,
+  "tp": 10,
+  "mp": 2
+ },
+ "sagesse300_res150": {
+  "strength": 500,
+  "resistance": 150,
+  "wisdom": 300,
+  "tp": 9,
+  "mp": 2
+ },
+ "sagesse300_res150_niv301": {
+  "strength": 500,
+  "resistance": 150,
+  "wisdom": 300,
+  "tp": 10,
+  "mp": 2
+ },
+ "soutien_sci600": {
+  "science": 600,
+  "wisdom": 300,
+  "tp": 9,
+  "mp": 2
+ },
+ "soutien_sci400": {
+  "science": 400,
+  "wisdom": 300,
+  "resistance": 200,
+  "tp": 9,
+  "mp": 2
+ },
+ "soutien_sci400_res300": {
+  "science": 400,
+  "wisdom": 200,
+  "resistance": 300,
+  "tp": 9,
+  "mp": 2
  }
 }
