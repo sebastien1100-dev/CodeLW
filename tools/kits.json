@@ -1,0 +1,93 @@
+{
+ "kitC_enzo_kador": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "spark",
+   "puny_bulb",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "meteorite",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "metallic_bulb",
+   "burning",
+   "flash",
+   "stalactite",
+   "adrenaline",
+   "motivation",
+   "steroid",
+   "regeneration",
+   "devil_strike"
+  ]
+ },
+ "kit_sebo": {
+  "weapons": [
+   "laser",
+   "axe",
+   "katana",
+   "m_laser"
+  ],
+  "chips": [
+   "burning",
+   "iceberg",
+   "flash",
+   "stalactite",
+   "rockfall",
+   "lightning",
+   "meteorite",
+   "devil_strike",
+   "adrenaline",
+   "motivation",
+   "steroid",
+   "regeneration",
+   "liberation",
+   "puny_bulb",
+   "healer_bulb",
+   "metallic_bulb",
+   "winged_boots",
+   "fortress",
+   "helmet",
+   "cure"
+  ]
+ },
+ "kit_jessy": {
+  "weapons": [
+   "laser",
+   "destroyer",
+   "m_laser",
+   "b_laser"
+  ],
+  "chips": [
+   "burning",
+   "iceberg",
+   "flash",
+   "stalactite",
+   "rockfall",
+   "lightning",
+   "meteorite",
+   "devil_strike",
+   "adrenaline",
+   "motivation",
+   "steroid",
+   "regeneration",
+   "liberation",
+   "puny_bulb",
+   "healer_bulb",
+   "metallic_bulb",
+   "winged_boots",
+   "fortress",
+   "helmet",
+   "cure"
+  ]
+ },
+ "_doc": "Équipements testables avec bench.py --kit. Sans 'components', ceux du vrai poireau sont repris."
+}

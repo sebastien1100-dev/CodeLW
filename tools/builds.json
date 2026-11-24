@@ -1,0 +1,45 @@
+{
+ "_doc": "Achats de capital (points achetés, pas stats finales). Le reste du capital part en vie. tp/mp = PT/PM achetés (base 10/3).",
+ "ancien_tout_force": {
+  "life": 1480,
+  "strength": 606,
+  "agility": 82,
+  "tp": 9,
+  "mp": 2
+ },
+ "actuel": {
+  "strength": 500,
+  "resistance": 200,
+  "wisdom": 150,
+  "tp": 9,
+  "mp": 2
+ },
+ "actuel_niv301": {
+  "strength": 500,
+  "resistance": 200,
+  "wisdom": 150,
+  "tp": 10,
+  "mp": 2
+ },
+ "equilibre": {
+  "strength": 400,
+  "resistance": 300,
+  "wisdom": 200,
+  "tp": 9,
+  "mp": 2
+ },
+ "force_res": {
+  "strength": 500,
+  "resistance": 250,
+  "wisdom": 100,
+  "tp": 9,
+  "mp": 2
+ },
+ "tank": {
+  "strength": 400,
+  "resistance": 200,
+  "wisdom": 100,
+  "tp": 9,
+  "mp": 2
+ }
+}
