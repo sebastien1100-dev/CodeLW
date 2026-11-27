@@ -103,5 +103,19 @@
   "resistance": 300,
   "tp": 9,
   "mp": 2
+ },
+ "res300": {
+  "strength": 500,
+  "resistance": 300,
+  "wisdom": 150,
+  "tp": 9,
+  "mp": 2
+ },
+ "res300_niv301": {
+  "strength": 500,
+  "resistance": 300,
+  "wisdom": 150,
+  "tp": 10,
+  "mp": 2
  }
 }

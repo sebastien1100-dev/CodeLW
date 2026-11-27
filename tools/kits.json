@@ -554,5 +554,245 @@
    "burning",
    "metallic_bulb"
   ]
+ },
+ "desint_sebo": {
+  "weapons": [
+   "laser",
+   "axe",
+   "katana",
+   "m_laser"
+  ],
+  "chips": [
+   "desintegration",
+   "motivation",
+   "cure",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "burning",
+   "metallic_bulb"
+  ]
+ },
+ "actuel_sebo": {
+  "weapons": [
+   "laser",
+   "axe",
+   "katana",
+   "m_laser"
+  ],
+  "chips": [
+   "helmet",
+   "motivation",
+   "cure",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "burning",
+   "metallic_bulb"
+  ]
+ },
+ "desint_jessy": {
+  "weapons": [
+   "laser",
+   "destroyer",
+   "b_laser",
+   "m_laser"
+  ],
+  "chips": [
+   "desintegration",
+   "motivation",
+   "cure",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "burning",
+   "metallic_bulb"
+  ]
+ },
+ "actuel_jessy": {
+  "weapons": [
+   "laser",
+   "destroyer",
+   "b_laser",
+   "m_laser"
+  ],
+  "chips": [
+   "helmet",
+   "motivation",
+   "cure",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "burning",
+   "metallic_bulb"
+  ]
+ },
+ "desint_Enzo": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "desintegration",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "burning",
+   "metallic_bulb",
+   "resurrection"
+  ]
+ },
+ "actuel_Enzo": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "burning",
+   "metallic_bulb",
+   "resurrection"
+  ]
+ },
+ "desint_Kador": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "desintegration",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ]
+ },
+ "actuel_Kador": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ]
  }
 }
