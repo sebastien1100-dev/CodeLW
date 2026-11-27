@@ -95,6 +95,16 @@ function isInvincible(e) {
 	for (var ef in getEffects(e)) if (ef[0] == EFFECT_ADD_STATE && ef[1] == STATE_INVINCIBLE) return true;
 	return false;
 }
+// ennemis dangereux (pour la menace et le placement) : tous ceux qui peuvent agir, invincibles compris
+function threats() {
+	var res = [];
+	for (var e in getAliveEnemies()) if (!isStatic(e)) push(res, e);
+	return count(res) > 0 ? res : getAliveEnemies();
+}
+function isBossObjective(e) {
+	var n = getName(e);
+	return n == "graal" || n == "red_crystal" || n == "green_crystal" || n == "blue_crystal" || n == "yellow_crystal";
+}
 function foes() {
 	var res = [];
 	var shielded = false;
@@ -102,9 +112,12 @@ function foes() {
 		if (isInvincible(e)) { shielded = true; continue; }
 		if (!isStatic(e)) push(res, e);
 	}
-	// boss : tant que des ennemis sont invincibles, les objectifs immobiles (cristaux, graal) deviennent des cibles
+	// boss Roi Fenouil : tant que le graal vit, ne JAMAIS viser le graal ni un cristal
+	// (un cristal mort au tour du graal déclenche l'Apocalypse, qui tue toute l'équipe)
 	if (shielded) {
-		for (var e in getAliveEnemies()) if (isStatic(e) && !isInvincible(e)) push(res, e);
+		var safe = [];
+		for (var e in res) if (!isBossObjective(e)) push(safe, e);
+		return safe;  // peut être vide : on n'attaque rien plutôt que de risquer l'Apocalypse
 	}
 	return count(res) > 0 ? res : getAliveEnemies();
 }
@@ -365,7 +378,7 @@ function cleanseIfPoisoned() {
 
 function enemyThreatens() {
 	// un ennemi peut-il me toucher au prochain tour ? (approximation)
-	for (var e in foes()) {
+	for (var e in threats()) {
 		if (getCellDistance(getCell(), getCell(e)) <= getMP(e) + 10) return true;
 	}
 	return false;
@@ -417,7 +430,7 @@ function enemyProfile(e) {
 function danger(cell) {
 	var total = 0;
 	var shield = 1 - getRelativeShield() / 100;
-	for (var e in foes()) {
+	for (var e in threats()) {
 		if (isStatic(e)) continue;
 		var mp = getTotalMP(e);
 		var dist = getCellDistance(cell, getCell(e));
@@ -450,7 +463,7 @@ function position() {
 	for (var cell : var dist in reach) {
 		var seen = 0;
 		var minD = 1000;
-		for (var e in foes()) {
+		for (var e in threats()) {
 			if (isSummon(e)) continue;
 			if (lineOfSight(getCell(e), cell, [getCell(e), getCell()])) seen++;
 			minD = min(minD, getCellDistance(cell, getCell(e)));

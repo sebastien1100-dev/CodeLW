@@ -1,0 +1,976 @@
+// =====================================================================
+//  Opti - IA générique (LeekScript 4)
+//  Principe : à chaque tour on cherche la meilleure (case, cible, combo)
+//  parmi les cases accessibles, on se boost si on peut taper, on exécute,
+//  puis on dépense les PT restants (boucliers, soins, boosts) et on se cache.
+// =====================================================================
+
+global ME = getEntity();
+global AGGRO_TURN = 20;  // après ce tour on arrête de jouer la prudence
+global USE_BULBS = true;
+global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
+global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
+global SAFE_RATIO = 0.05;
+global SUPPORT_RANGE = 5;   // portée typique des boosts sur allié
+global FOCUS_MULT = 1.4;    // bonus pour la cible commune de l'équipe (combats à plusieurs)   // en dessous de ce % de ma vie, une case est considérée sûre
+global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
+global POISON_WEIGHT = 0.6;     // un poison vaut moins qu'un dégât direct (peut être soigné / dilué)
+global SUMMON_WEIGHT = 0.5;     // priorité plus faible sur les bulbes
+global KILL_BONUS = 400;        // bonus pour un kill ce tour
+
+// ---------- classification des outils (une seule fois) ----------
+global DMG_TOOLS;     // armes + puces qui font des dégâts / poison
+global HEAL_CHIPS;
+global SHIELD_CHIPS;
+global TP_BUFF_CHIPS;
+global STR_BUFF_CHIPS;
+global MP_BUFF_CHIPS;
+global RETURN_CHIPS;
+global CLEANSE_CHIPS;  // antidote / libération
+global SUMMON_CHIPS;
+global OTHER_BUFF_CHIPS;  // sagesse, résistance, agilité, vitalité (utile au soutien)
+global TOOL_INFO;      // map tool -> [cost, dmgMin, dmgMax, poisonMin, poisonMax, poisonTurns, isWeapon, maxUses]
+
+function effectsOf(tool, isW) {
+	return isW ? getWeaponEffects(tool) : getChipEffects(tool);
+}
+
+function classify() {
+	DMG_TOOLS = []; HEAL_CHIPS = []; SHIELD_CHIPS = []; TP_BUFF_CHIPS = [];
+	STR_BUFF_CHIPS = []; MP_BUFF_CHIPS = []; RETURN_CHIPS = []; CLEANSE_CHIPS = []; SUMMON_CHIPS = []; OTHER_BUFF_CHIPS = [];
+	TOOL_INFO = [:];
+	for (var w in getWeapons()) {
+		register(w, true);
+	}
+	for (var c in getChips()) {
+		register(c, false);
+	}
+}
+
+function register(tool, isW) {
+	var dMin = 0, dMax = 0, pMin = 0, pMax = 0, pTurns = 0;
+	var otherb = false, summ = false, after = false, heal = false, shield = false, tpb = false, strb = false, mpb = false, ret = false, clean = false;
+	for (var e in effectsOf(tool, isW)) {
+		var t = e[0];
+		if (t == EFFECT_DAMAGE) { dMin += e[1]; dMax += e[2]; }
+		else if (t == EFFECT_POISON) { pMin += e[1]; pMax += e[2]; pTurns = max(pTurns, e[3]); }
+		else if (t == EFFECT_HEAL) heal = true;
+		else if (t == EFFECT_RELATIVE_SHIELD || t == EFFECT_ABSOLUTE_SHIELD || t == EFFECT_RAW_ABSOLUTE_SHIELD) shield = true;
+		else if (t == EFFECT_RAW_BUFF_TP || t == EFFECT_BUFF_TP) tpb = true;
+		else if (t == EFFECT_RAW_BUFF_STRENGTH || t == EFFECT_BUFF_STRENGTH) strb = true;
+		else if (t == EFFECT_RAW_BUFF_MP || t == EFFECT_BUFF_MP) mpb = true;
+		else if (t == EFFECT_DAMAGE_RETURN) ret = true;
+		else if (t == EFFECT_ANTIDOTE || t == EFFECT_DEBUFF) clean = true;
+		else if (t == EFFECT_AFTEREFFECT) after = true;
+		else if (t == EFFECT_SUMMON) summ = true;
+		else if (t == EFFECT_RAW_BUFF_WISDOM || t == EFFECT_BUFF_WISDOM || t == EFFECT_RAW_BUFF_RESISTANCE || t == EFFECT_BUFF_RESISTANCE
+			|| t == EFFECT_RAW_BUFF_AGILITY || t == EFFECT_BUFF_AGILITY || t == EFFECT_BOOST_MAX_LIFE) otherb = true;
+	}
+	var cost = isW ? getWeaponCost(tool) : getChipCost(tool);
+	var uses = isW ? getWeaponMaxUses(tool) : getChipMaxUses(tool);
+	if (uses <= 0) uses = 10;
+	TOOL_INFO[tool] = [cost, dMin, dMax, pMin, pMax, pTurns, isW, uses];
+	if (dMax > 0 || pMax > 0) push(DMG_TOOLS, tool);
+	else if (isW) return;
+	else if (summ) push(SUMMON_CHIPS, tool);
+	else if (heal) push(HEAL_CHIPS, tool);
+	else if (shield) push(SHIELD_CHIPS, tool);
+	else if (tpb) push(TP_BUFF_CHIPS, tool);
+	else if (strb && !after) push(STR_BUFF_CHIPS, tool);
+	else if (mpb) push(MP_BUFF_CHIPS, tool);
+	else if (ret) push(RETURN_CHIPS, tool);
+	else if (clean) push(CLEANSE_CHIPS, tool);
+	else if (otherb) push(OTHER_BUFF_CHIPS, tool);
+}
+
+if (getTurn() == 1) classify();
+
+// ---------- utilitaires ----------
+// ennemis qui combattent : on ignore les entités statiques (coffres...) sauf s'il ne reste qu'elles
+function isStatic(e) {
+	return getTotalMP(e) == 0 && count(getWeapons(e)) == 0 && count(getChips(e)) == 0;
+}
+function foes() {
+	var res = [];
+	for (var e in getAliveEnemies()) if (!isStatic(e)) push(res, e);
+	return count(res) > 0 ? res : getAliveEnemies();
+}
+function nearestFoe() {
+	var best = null, bd = 100000;
+	for (var e in foes()) {
+		var d = getCellDistance(getCell(), getCell(e));
+		if (d < bd) { bd = d; best = e; }
+	}
+	return best;
+}
+// on passe à l'offensive en fin de partie (pour éviter les matchs nuls)
+function isAggressive() { return getTurn() > AGGRO_TURN; }
+
+
+function toolCost(tool) { return TOOL_INFO[tool][0]; }
+function isW(tool) { return TOOL_INFO[tool][6]; }
+
+function chipReady(chip) {
+	return getCooldown(chip) == 0 && getChipCost(chip) <= getTP();
+}
+
+function damageReturnOf(e) {
+	var r = 0;
+	for (var ef in getEffects(e)) if (ef[0] == EFFECT_DAMAGE_RETURN) r += ef[1];
+	return r / 100;
+}
+
+// dégât espéré d'une utilisation de tool sur e
+function hitValue(tool, e) {
+	var i = TOOL_INFO[tool];
+	var v = 0;
+	if (i[2] > 0) {
+		var d = (i[1] + i[2]) / 2 * (1 + getStrength() / 100);
+		d = d * (1 - getRelativeShield(e) / 100) - getAbsoluteShield(e);
+		if (d > 0) v += d;
+	}
+	if (i[4] > 0) {
+		var p = (i[3] + i[4]) / 2 * (1 + getMagic() / 100);
+		p = p * (1 - getRelativeShield(e) / 100) - getAbsoluteShield(e);
+		if (p > 0) v += p * i[5] * POISON_WEIGHT;
+	}
+	return v;
+}
+
+// cases accessibles : map cell -> distance
+function reachable(mp) {
+	var res = [:];
+	var from = getCell();
+	res[from] = 0;
+	var x0 = getCellX(from), y0 = getCellY(from);
+	for (var dx = -mp; dx <= mp; dx++) {
+		var r = mp - abs(dx);
+		for (var dy = -r; dy <= r; dy++) {
+			if (dx == 0 && dy == 0) continue;
+			var c = getCellFromXY(x0 + dx, y0 + dy);
+			if (c == null) continue;
+			var l = getPathLength(from, c);
+			if (l != null && l <= mp) res[c] = l;
+		}
+	}
+	return res;
+}
+
+// cases depuis lesquelles tool touche e (en ignorant ma propre case)
+function cellsFor(tool, e) {
+	var cells = isW(tool) ? getCellsToUseWeapon(tool, e, [getCell()]) : getCellsToUseChip(tool, e, [getCell()]);
+	if (cells == null || count(cells) == 0) return null;
+	var s = [:];
+	for (var c in cells) s[c] = true;
+	return s;
+}
+
+// sac à dos par groupe : meilleur combo de tools sur e avec tp PT
+// renvoie [valeur, [[tool, nb], ...]]
+function bestCombo(tools, e, tp) {
+	var cur = getWeapon();
+	var best = [];
+	var pick = [];
+	for (var t = 0; t <= tp; t++) { push(best, 0); }
+	var choice = [];  // choice[k][t] = nb d'utilisations de tools[k] avec t PT
+	var k = 0;
+	for (var tool in tools) {
+		var cost = toolCost(tool);
+		var extra = (isW(tool) && tool != cur) ? 1 : 0;
+		var maxUses = TOOL_INFO[tool][7];
+		if (!isW(tool)) {
+			if (getCooldown(tool) > 0) maxUses = 0;
+			else if (getChipCooldown(tool) > 0) maxUses = 1;
+		}
+		var hv = hitValue(tool, e);
+		var nb = [];
+		var nbest = [];
+		for (var t = 0; t <= tp; t++) {
+			var bv = best[t];
+			var bn = 0;
+			for (var n = 1; n <= maxUses; n++) {
+				var c = n * cost + extra;
+				if (c > t) break;
+				var v = best[t - c] + n * hv;
+				if (v > bv) { bv = v; bn = n; }
+			}
+			push(nbest, bv);
+			push(nb, bn);
+		}
+		best = nbest;
+		push(choice, nb);
+		k++;
+	}
+	// reconstruction
+	var plan = [];
+	var t = tp;
+	for (var j = count(tools) - 1; j >= 0; j--) {
+		var n = choice[j][t];
+		if (n > 0) {
+			var tool = tools[j];
+			push(plan, [tool, n]);
+			t -= n * toolCost(tool) + ((isW(tool) && tool != cur) ? 1 : 0);
+		}
+	}
+	return [best[tp], plan];
+}
+
+// cible commune de l'équipe : tous nos poireaux font le même calcul, donc convergent sur le même ennemi
+// (le poireau ennemi le plus facile à abattre : vie effective = vie protégée par ses boucliers)
+global FOCUS = null;
+global FOCUS_TURN = -1;
+function focusTarget() {
+	if (FOCUS_TURN == getTurn() && FOCUS != null && isAlive(FOCUS)) return FOCUS;
+	FOCUS = null;
+	var best = 1000000000;
+	for (var e in foes()) {
+		if (isSummon(e) || isStatic(e)) continue;
+		var eff = getLife(e) / max(0.1, 1 - getRelativeShield(e) / 100) + getAbsoluteShield(e) * 3;
+		if (eff < best) { best = eff; FOCUS = e; }
+	}
+	FOCUS_TURN = getTurn();
+	return FOCUS;
+}
+
+function targetScore(e, dmg) {
+	var life = getLife(e);
+	var ret = damageReturnOf(e) * min(dmg, life);
+	var s = min(dmg, life);
+	if (dmg >= life) s += KILL_BONUS + life * 0.5;
+	if (isSummon(e)) s *= SUMMON_WEIGHT;
+	if (count(getAliveAllies()) > 1 && e == focusTarget()) s *= FOCUS_MULT;
+	return s - ret * 1.5;
+}
+
+// meilleur plan : [score, cell, enemy, combo]
+function planAttack(tp) {
+	if (graal() != null) return null;  // boss Roi Fenouil : ennemis invincibles, et un dégât de zone tuerait un cristal
+	var aggressive = isAggressive();
+	var reach = reachable(getMP());
+	var best = null;
+	for (var e in foes()) {
+		var usable = [];
+		var sets = [];
+		for (var tool in DMG_TOOLS) {
+			if (!isW(tool) && getCooldown(tool) > 0) continue;
+			if (toolCost(tool) > tp) continue;
+			if (hitValue(tool, e) <= 0) continue;
+			var s = cellsFor(tool, e);
+			if (s == null) continue;
+			push(usable, tool);
+			push(sets, s);
+		}
+		if (count(usable) == 0) continue;
+		var memo = [:];
+		for (var cell : var dist in reach) {
+			var mask = "";
+			var tools = [];
+			for (var i = 0; i < count(usable); i++) {
+				if (sets[i][cell] != null) { push(tools, usable[i]); mask += "1"; }
+				else mask += "0";
+			}
+			if (count(tools) == 0) continue;
+			var r = memo[mask];
+			if (r == null) { r = bestCombo(tools, e, tp); memo[mask] = r; }
+			if (r[0] <= 0) continue;
+			var sc = targetScore(e, r[0]) - dist * 15;
+			if (!aggressive) {
+				// attaquer depuis une case menacée coûte cher, surtout sans PM pour repartir
+				var dg = danger(cell);
+				if (dg > 0) sc -= dg * DANGER_W * (getMP() - dist <= 1 ? 1 : 0.5);
+			}
+			if (best == null || sc > best[0]) best = [sc, cell, e, r[1]];
+		}
+	}
+	if (best != null && best[0] <= 0) return null;
+	return best;
+}
+
+function execute(plan) {
+	var cell = plan[1];
+	var e = plan[2];
+	if (cell != getCell()) moveTowardCell(cell);
+	// arme actuelle d'abord, puis le reste
+	var combo = plan[3];
+	var cur = getWeapon();
+	var ordered = [];
+	for (var p in combo) if (p[0] == cur) push(ordered, p);
+	for (var p in combo) if (p[0] != cur) push(ordered, p);
+	for (var p in ordered) {
+		var tool = p[0];
+		for (var n = 0; n < p[1]; n++) {
+			if (!isAlive(e)) return;
+			if (isW(tool)) {
+				// changer d'arme coûte 1 PT : ne le faire que si on pourra tirer ensuite
+				if (getWeapon() != tool) {
+					if (getTP() < getWeaponCost(tool) + 1) break;
+					setWeapon(tool);
+				}
+				// la case visée a pu ne pas être atteinte (chemin bloqué) : vérifier portée et ligne de vue
+				if (getWeapon() != tool || !canUseWeapon(tool, e)) break;
+				if (useWeapon(e) < 0) break;
+			} else {
+				if (!canUseChip(tool, e)) break;
+				if (useChip(tool, e) < 0) break;
+			}
+		}
+	}
+}
+
+// ---------- phases ----------
+function lifeRatio(e) { return getLife(e) / getTotalLife(e); }
+
+// soin attendu d'une puce (la sagesse du lanceur multiplie les soins)
+function healAmount(c) {
+	var h = 0;
+	for (var ef in getChipEffects(c)) if (ef[0] == EFFECT_HEAL) h += (ef[1] + ef[2]) / 2 * max(1, ef[3]);
+	return h * (1 + getWisdom() / 100);
+}
+
+function healSelf(threshold) {
+	if (lifeRatio(ME) >= threshold) return;
+	// la plus grosse heal d'abord (regeneration etc.)
+	var sorted = arraySort(HEAL_CHIPS, function(a, b) { return toolCost(b) - toolCost(a); });
+	for (var c in sorted) {
+		if (lifeRatio(ME) >= threshold) break;
+		if (chipReady(c)) useChip(c, ME);
+	}
+}
+
+function healAllies() {
+	for (var a in getAliveAllies()) {
+		if (a == ME || isSummon(a) || lifeRatio(a) > 0.6) continue;
+		for (var c in HEAL_CHIPS) if (chipReady(c) && canUseChip(c, a)) useChip(c, a);
+	}
+}
+
+function cleanseIfPoisoned() {
+	var poison = 0;
+	for (var ef in getEffects(ME)) if (ef[0] == EFFECT_POISON) poison += ef[1] * ef[3];
+	if (poison < getLife() * 0.25) return;
+	for (var c in CLEANSE_CHIPS) if (chipReady(c)) { useChip(c, ME); return; }
+}
+
+function enemyThreatens() {
+	// un ennemi peut-il me toucher au prochain tour ? (approximation)
+	for (var e in foes()) {
+		if (getCellDistance(getCell(), getCell(e)) <= getMP(e) + 10) return true;
+	}
+	return false;
+}
+
+function useBuffs(list) {
+	for (var c in list) if (chipReady(c)) useChip(c, ME);
+}
+
+
+
+// ---------- menace en dégâts ----------
+// profil offensif d'un ennemi pour son prochain tour : [[coût, dégât moyen, portée min, portée max, utilisations], ...]
+global PROFILE = [:];
+global PROFILE_TURN = -1;
+function enemyProfile(e) {
+	if (PROFILE_TURN != getTurn()) { PROFILE = [:]; PROFILE_TURN = getTurn(); }
+	var p = PROFILE[e];
+	if (p != null) return p;
+	p = [];
+	var str = 1 + max(0, getStrength(e)) / 100;
+	var mag = 1 + max(0, getMagic(e)) / 100;
+	for (var w in getWeapons(e)) {
+		var d = 0;
+		for (var ef in getWeaponEffects(w)) {
+			if (ef[0] == EFFECT_DAMAGE) d += (ef[1] + ef[2]) / 2 * str;
+			else if (ef[0] == EFFECT_POISON) d += (ef[1] + ef[2]) / 2 * mag * ef[3] * POISON_WEIGHT;
+		}
+		var u = getWeaponMaxUses(w);
+		if (d > 0) push(p, [getWeaponCost(w) + 0.0, d, getWeaponMinRange(w), getWeaponMaxRange(w), u <= 0 ? 10 : u]);
+	}
+	for (var c in getChips(e)) {
+		if (getCooldown(c, e) > 1) continue;  // pas dispo à son prochain tour
+		var d = 0;
+		for (var ef in getChipEffects(c)) {
+			if (ef[0] == EFFECT_DAMAGE) d += (ef[1] + ef[2]) / 2 * str;
+			else if (ef[0] == EFFECT_POISON) d += (ef[1] + ef[2]) / 2 * mag * ef[3] * POISON_WEIGHT;
+		}
+		var u = getChipCooldown(c) > 0 ? 1 : getChipMaxUses(c);
+		if (d > 0) push(p, [getChipCost(c) + 0.0, d, getChipMinRange(c), getChipMaxRange(c), u <= 0 ? 10 : u]);
+	}
+	// meilleur rendement d'abord
+	p = arraySort(p, function(a, b) { return b[1] / b[0] - a[1] / a[0]; });
+	PROFILE[e] = p;
+	return p;
+}
+
+// dégâts que les ennemis peuvent m'infliger sur `cell` à leur prochain tour (estimation prudente)
+function danger(cell) {
+	var total = 0;
+	var shield = 1 - getRelativeShield() / 100;
+	for (var e in foes()) {
+		if (isStatic(e)) continue;
+		var mp = getTotalMP(e);
+		var dist = getCellDistance(cell, getCell(e));
+		var tp = getTotalTP(e);
+		var dmg = 0;
+		for (var t in enemyProfile(e)) {
+			if (dist > mp + t[3]) continue;          // hors d'atteinte même en avançant
+			var n = min(t[4], floor(tp / t[0]));
+			if (n <= 0) continue;
+			dmg += n * t[1];
+			tp -= n * t[0];
+			if (tp <= 0) break;
+		}
+		if (dmg <= 0) continue;
+		// sans ligne de vue depuis sa position actuelle, il doit encore se déplacer pour tirer
+		if (!lineOfSight(getCell(e), cell, [getCell(e), getCell()])) dmg *= LOS_FACTOR;
+		total += dmg;
+	}
+	return max(0, total * shield - getAbsoluteShield());
+}
+
+
+// se placer : hors menace si possible (au plus près), sinon caché, sinon loin
+function position() {
+	if (getMP() <= 0) return;
+	var aggressive = isAggressive();
+	var reach = reachable(getMP());
+	var bestCell = getCell();
+	var bestScore = -1000000;
+	for (var cell : var dist in reach) {
+		var seen = 0;
+		var minD = 1000;
+		for (var e in foes()) {
+			if (isSummon(e)) continue;
+			if (lineOfSight(getCell(e), cell, [getCell(e), getCell()])) seen++;
+			minD = min(minD, getCellDistance(cell, getCell(e)));
+		}
+		var dg = aggressive ? 0 : danger(cell);
+		var sc;
+		if (dg <= getLife() * SAFE_RATIO) sc = 100000 - seen * 30 - minD;  // sûr : on reste au contact
+		else sc = -dg - seen * 50 + minD * 3;                               // exposé : le moins de dégâts possible
+		if (sc > bestScore) { bestScore = sc; bestCell = cell; }
+	}
+	if (bestCell != getCell()) moveTowardCell(bestCell);
+}
+
+function hasEffect(e, types) {
+	for (var ef in getEffects(e)) if (inArray(types, ef[0])) return true;
+	return false;
+}
+
+function resurrectAlly() {
+	if (!inArray(getChips(), CHIP_RESURRECTION) || getCooldown(CHIP_RESURRECTION) > 0) return;
+	var best = null;
+	for (var a in getDeadAllies()) {
+		if (!isSummon(a) && (best == null || getLevel(a) > getLevel(best))) best = a;
+	}
+	if (best == null) return;
+	for (var c in getCellsToUseChipOnCell(CHIP_RESURRECTION, getCell())) {
+		if (resurrect(best, c) > 0) return;
+	}
+}
+
+
+// =====================================================================
+//  Bulbes
+// =====================================================================
+
+// IA générique des bulbes : soigne, protège / booste les alliés, attaque, puis se met à l'abri
+function bulbAI() {
+	var me = getEntity();
+	var heals = [], supports = [], attacks = [];
+	for (var c in getChips(me)) {
+		var t = getChipEffects(c)[0][0];
+		if (t == EFFECT_HEAL) push(heals, c);
+		else if (t == EFFECT_DAMAGE || t == EFFECT_POISON) push(attacks, c);
+		else push(supports, c);
+	}
+	// soin : l'allié le plus blessé
+	var hurt = null;
+	for (var a in getAliveAllies()) {
+		var r = getLife(a) / getTotalLife(a);
+		if (r < 0.85 && (hurt == null || r < getLife(hurt) / getTotalLife(hurt))) hurt = a;
+	}
+	if (hurt != null && count(heals) > 0) {
+		if (!canUseChip(heals[0], hurt)) moveToward(hurt);
+		for (var c in heals) while (getCooldown(c) == 0 && useChip(c, hurt) > 0) {}
+	}
+	// soutien : le poireau allié le plus proche
+	var leek = null;
+	for (var a in getAliveAllies()) {
+		if (!isSummon(a) && (leek == null || getCellDistance(getCell(), getCell(a)) < getCellDistance(getCell(), getCell(leek)))) leek = a;
+	}
+	if (leek != null) {
+		for (var c in supports) {
+			if (getCooldown(c) > 0) continue;
+			if (!canUseChip(c, leek)) moveToward(leek);
+			useChip(c, leek);
+		}
+	}
+	// attaque : l'ennemi le plus proche
+	var e = graal() == null ? nearestFoe() : null;
+	if (e != null) {
+		for (var c in attacks) {
+			if (getCooldown(c) > 0 || getChipCost(c) > getTP()) continue;
+			if (!canUseChip(c, e) && getMP() > 0) {
+				var cells = getCellsToUseChip(c, e);
+				var best = null, bd = 1000;
+				for (var cell in cells) {
+					var l = getPathLength(getCell(), cell);
+					if (l != null && l <= getMP() && l < bd) { bd = l; best = cell; }
+				}
+				if (best != null) moveTowardCell(best);
+			}
+			while (getCooldown(c) == 0 && useChip(c, e) > 0) {}
+		}
+	}
+	position();
+}
+
+// invoque les bulbes prêts (les plus chers d'abord), sur une case libre loin des ennemis
+function summonBulbs() {
+	if (!USE_BULBS) return;
+	var chips = arraySort(SUMMON_CHIPS, function(a, b) { return getChipCost(b) - getChipCost(a); });
+	for (var chip in chips) {
+		if (!chipReady(chip)) continue;
+		var from = getCell();
+		var x0 = getCellX(from), y0 = getCellY(from);
+		var rMax = getChipMaxRange(chip), rMin = getChipMinRange(chip);
+		var bestCell = null, bestD = -1;
+		for (var dx = -rMax; dx <= rMax; dx++) {
+			for (var dy = -rMax; dy <= rMax; dy++) {
+				var d = abs(dx) + abs(dy);
+				if (d < rMin || d > rMax) continue;
+				var c = getCellFromXY(x0 + dx, y0 + dy);
+				if (c == null || !isEmptyCell(c) || !lineOfSight(from, c)) continue;
+				var minD = 1000;
+				for (var e in foes()) minD = min(minD, getCellDistance(c, getCell(e)));
+				if (minD > bestD) { bestD = minD; bestCell = c; }
+			}
+		}
+		if (bestCell != null) summon(chip, bestCell, bulbAI);
+	}
+}
+
+
+
+
+// =====================================================================
+//  Rôle soutien (poireau "science") : booste, protège et soigne les alliés
+// =====================================================================
+global SUPPORT_MIN_SCIENCE = 200;
+function isSupport() { return getScience() >= SUPPORT_MIN_SCIENCE; }
+
+// alliés combattants (poireaux, pas les bulbes), le plus proche de l'ennemi d'abord
+function fighters() {
+	var res = [];
+	for (var a in getAliveAllies()) if (a != ME && !isSummon(a)) push(res, a);
+	var n = nearestFoe();
+	if (n == null) return res;
+	return arraySort(res, function(a, b) { return getCellDistance(getCell(a), getCell(n)) - getCellDistance(getCell(b), getCell(n)); });
+}
+
+// l'allié porte-t-il déjà l'effet de cette puce ?
+function hasChipEffect(a, chip) {
+	for (var ef in getEffects(a)) if (ef[5] == chip) return true;
+	return false;
+}
+
+// valeur d'un boost : les effets "bruts" ne dépendent pas de la science, les autres sont multipliés par (1 + science/100)
+function buffValue(chip) {
+	var v = 0;
+	var sci = 1 + getScience() / 100;
+	for (var ef in getChipEffects(chip)) {
+		var t = ef[0], avg = (ef[1] + ef[2]) / 2, turns = max(1, ef[3]);
+		if (t == EFFECT_BUFF_STRENGTH) v += avg * sci * turns;
+		else if (t == EFFECT_RAW_BUFF_STRENGTH) v += avg * turns;
+		else if (t == EFFECT_BUFF_TP) v += avg * sci * turns * 120;     // 1 PT ~ 120 de force
+		else if (t == EFFECT_RAW_BUFF_TP) v += avg * turns * 120;
+		else if (t == EFFECT_BUFF_MP) v += avg * sci * turns * 40;
+		else if (t == EFFECT_RAW_BUFF_MP) v += avg * turns * 40;
+		else if (t == EFFECT_BUFF_WISDOM || t == EFFECT_BUFF_RESISTANCE || t == EFFECT_BUFF_AGILITY) v += avg * sci * turns * 0.4;
+		else if (t == EFFECT_RAW_BUFF_WISDOM || t == EFFECT_RAW_BUFF_RESISTANCE || t == EFFECT_RAW_BUFF_AGILITY) v += avg * turns * 0.4;
+	}
+	return v / getChipCost(chip);
+}
+
+// lance `chip` sur le premier allié de la liste qui est à portée et pas encore boosté
+function buffAllies(chip, allies) {
+	if (!chipReady(chip)) return false;
+	for (var a in allies) {
+		if (hasChipEffect(a, chip)) continue;
+		if (canUseChip(chip, a)) {
+			if (useChip(chip, a) > 0) return true;
+		}
+	}
+	return false;
+}
+
+// case où se placer : d'où l'on peut booster le plus d'alliés (portée + ligne de vue), l'allié de tête compte double,
+// en limitant les dégâts encaissables ; si personne n'est boostable, on se rapproche de l'allié de tête
+function supportCell(allies, dangerWeight) {
+	var reach = reachable(getMP());
+	if (count(allies) == 0) return getCell();
+	var front = allies[0];
+	var best = getCell(), bestSc = -1000000;
+	for (var cell : var dist in reach) {
+		var near = 0;
+		for (var a in allies) {
+			var ac = getCell(a);
+			if (getCellDistance(cell, ac) <= SUPPORT_RANGE && lineOfSight(cell, ac, [ac, getCell()])) near += (a == front ? 2 : 1);
+		}
+		var sc = near * 150 - danger(cell) * dangerWeight - dist * 2;
+		if (near == 0) sc -= getCellDistance(cell, getCell(front)) * 20;
+		if (sc > bestSc) { bestSc = sc; best = cell; }
+	}
+	return best;
+}
+
+function supportTurn() {
+	cleanseIfPoisoned();
+	resurrectAlly();
+	var allies = fighters();
+	// 1. se rapprocher du groupe pour être à portée
+	var cell = supportCell(allies, 0.3);
+	if (cell != getCell()) moveTowardCell(cell);
+	// 2. soins : l'allié le plus blessé (moi compris)
+	var hurt = ME;
+	for (var a in allies) if (lifeRatio(a) < lifeRatio(hurt)) hurt = a;
+	if (lifeRatio(hurt) < 0.7) {
+		var heals = arraySort(HEAL_CHIPS, function(a, b) { return healAmount(b) - healAmount(a); });
+		for (var c in heals) if (chipReady(c) && canUseChip(c, hurt)) useChip(c, hurt);
+	}
+	// 3. boosts : PT d'abord, puis force, puis le reste, sur les alliés les plus avancés
+	var buffs = TP_BUFF_CHIPS + STR_BUFF_CHIPS + MP_BUFF_CHIPS + OTHER_BUFF_CHIPS;
+	buffs = arraySort(buffs, function(a, b) { return buffValue(b) - buffValue(a); });
+	for (var c in buffs) buffAllies(c, allies);
+	// 4. boucliers : l'allié de tête (le plus exposé), puis moi
+	var exposed = count(allies) > 0 ? [allies[0]] : [];
+	push(exposed, ME);
+	for (var c in SHIELD_CHIPS) buffAllies(c, exposed);
+	for (var c in RETURN_CHIPS) buffAllies(c, exposed);
+	// 5. bulbes, attaque avec ce qui reste, soins restants
+	summonBulbs();
+	var plan = planAttack(getTP());
+	if (plan != null) execute(plan);
+	for (var c in HEAL_CHIPS) if (chipReady(c) && lifeRatio(hurt) < 0.9 && canUseChip(c, hurt)) useChip(c, hurt);
+	// 6. se replier près du groupe
+	cell = supportCell(fighters(), 1);
+	if (cell != getCell()) moveTowardCell(cell);
+}
+
+// =====================================================================
+//  Boss Roi Fenouil
+//  Le Graal rend tous les ennemis invincibles (sauf les 4 cristaux). Il s'autodétruit à son tour
+//  si chaque cristal projette son rayon sur lui : rouge vers y-1, vert vers y+1, bleu vers x-1,
+//  jaune vers x+1 (portée infinie, à travers les entités ; seul le rouge est arrêté par un obstacle).
+//  On déplace les cristaux en ligne droite : gant de boxe (pousse), grappin (attire), Inversion
+//  (échange). On ne tue jamais un cristal tant que le Graal vit : un cristal mort au tour du Graal
+//  déclenche l'Apocalypse, qui tue toute l'équipe.
+// =====================================================================
+global BEAM = ["red_crystal": [0, -1], "green_crystal": [0, 1], "blue_crystal": [-1, 0], "yellow_crystal": [1, 0]];
+global DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+global MAX_SLIDE = 7;  // gant : cristal à 2+ cases, case visée à 8 au plus ; grappin : cristal à 8 au plus
+
+function graal() {
+	for (var e in getAliveEnemies()) if (getName(e) == "graal") return e;
+	return null;
+}
+
+function cellAt(c, d, k) { return getCellFromXY(getCellX(c) + d[0] * k, getCellY(c) + d[1] * k); }
+
+// case libre (ma propre case compte comme libre : je la quitte pour me placer)
+function passable(c) { return c != null && !isObstacle(c) && (c == getCell() || isEmptyCell(c)); }
+
+function beamHits(name, cell, g) {
+	var d = BEAM[name];
+	for (var k = 1; k < 40; k++) {
+		var c = cellAt(cell, d, k);
+		if (c == null) return false;
+		if (c == g) return true;
+		if (name == "red_crystal" && isObstacle(c)) return false;
+	}
+	return false;
+}
+
+// cases d'où le cristal `name` touche le Graal, hors obstacles et cases fixes (HARD, voir computeHard) ;
+// la glissade réelle, elle, vérifie que la case est libre
+function goalCells(name, g) {
+	var d = BEAM[name];
+	var back = [-d[0], -d[1]];
+	var res = [];
+	for (var k = 1; k < 40; k++) {
+		var c = cellAt(g, back, k);
+		if (c == null) break;
+		if (isObstacle(c)) {
+			if (name == "red_crystal") break;
+			continue;
+		}
+		if (HARD[c] == null) push(res, c);
+	}
+	return res;
+}
+
+// cases considérées comme fixes pour la planification : Graal et cristaux, plus les autres ennemis si
+// withMobs (ils bougent, mais leur case du moment est la meilleure estimation) ; nos unités se déplaceront
+global HARD = [:];
+function computeHard(withMobs) {
+	HARD = [:];
+	for (var e in getAliveEnemies()) {
+		var n = getName(e);
+		if (withMobs || n == "graal" || BEAM[n] != null) HARD[getCell(e)] = true;
+	}
+}
+function hardFree(c, from) { return c != null && !isObstacle(c) && (c == from || HARD[c] == null); }
+
+// nombre de glissades restant depuis chaque case jusqu'à une case objectif : parcours en largeur depuis
+// les objectifs, en ne gardant que les glissades qui ont une case de lancement possible (gant derrière le
+// cristal, grappin au-delà de l'arrivée) ; on s'arrête une fois la case du cristal atteinte
+function distToGoal(goal, from) {
+	var dist = [:];
+	var queue = [];
+	for (var c in goal) { dist[c] = 0; push(queue, c); }
+	var i = 0;
+	while (i < count(queue)) {
+		var v = queue[i];
+		i++;
+		if (dist[from] != null && dist[v] >= dist[from]) break;
+		for (var d in DIRS4) {
+			// glissade de u vers v (direction -d, longueur k)
+			var pullOk = hardFree(cellAt(v, [-d[0], -d[1]], 1), from);
+			for (var k = 1; k <= MAX_SLIDE; k++) {
+				var u = cellAt(v, d, k);
+				if (!hardFree(u, from)) break;
+				if (dist[u] != null) continue;
+				var pushOk = k <= 6 && hardFree(cellAt(u, d, 1), from) && hardFree(cellAt(u, d, 2), from);
+				if (pushOk || pullOk) { dist[u] = dist[v] + 1; push(queue, u); }
+			}
+		}
+	}
+	return dist;
+}
+
+// placement de fin de tour pendant la phase du Graal : comme position(), mais sans rester sur les lignes
+// où l'on fait glisser les cristaux (une unité dans le couloir bloque la glissade ou la case de lancement)
+function inCorridor(cell, g) {
+	var x = getCellX(cell), y = getCellY(cell);
+	for (var e in getAliveEnemies()) {
+		var n = getName(e);
+		if (BEAM[n] == null || beamHits(n, getCell(e), getCell(g))) continue;
+		var c = getCell(e);
+		if ((getCellX(c) == x || getCellY(c) == y) && getCellDistance(c, cell) <= 8) return true;
+	}
+	return false;
+}
+
+function bossPosition(g) {
+	if (getMP() <= 0) return;
+	var reach = reachable(getMP());
+	var bestCell = getCell(), bestScore = -1000000;
+	for (var cell : var dist in reach) {
+		var sc = -danger(cell) - dist;
+		if (inCorridor(cell, g)) sc -= 300;
+		if (sc > bestScore) { bestScore = sc; bestCell = cell; }
+	}
+	if (bestCell != getCell()) moveTowardCell(bestCell);
+}
+
+// façons de faire glisser le cristal de p à t (direction d, L cases) : [puce, case du lanceur, cible]
+function casterOptions(p, t, d, L) {
+	var res = [];
+	var chips = getChips();
+	if (inArray(chips, CHIP_BOXING_GLOVE)) {
+		// pousser : lanceur derrière le cristal, à 2 cases au moins, case visée à 8 au plus
+		for (var k = 1; k <= 8 - L; k++) {
+			var c = cellAt(p, [-d[0], -d[1]], k);
+			if (!passable(c)) break;
+			if (k >= 2) push(res, [CHIP_BOXING_GLOVE, c, t]);
+		}
+	}
+	if (inArray(chips, CHIP_GRAPPLE)) {
+		// attirer : lanceur au-delà de la case visée, cristal à 8 cases au plus
+		for (var k = 1; k <= 8; k++) {
+			var c = cellAt(p, d, k);
+			if (!passable(c)) break;
+			if (k > L) push(res, [CHIP_GRAPPLE, c, t]);
+		}
+	}
+	if (inArray(chips, CHIP_INVERSION)) {
+		// échanger : le cristal prend ma place, je dois donc être sur t (en ligne, rien entre nous)
+		push(res, [CHIP_INVERSION, t, p]);
+	}
+	return res;
+}
+
+// meilleure glissade : [score, puce, case du lanceur, cible, cristal, distance de marche] ; maxWalk = null : sans limite
+function bestSlide(g, maxWalk) {
+	var gc = getCell(g);
+	var reach = maxWalk == null ? null : reachable(maxWalk);
+	var best = null;
+	for (var cr in getAliveEnemies()) {
+		var name = getName(cr);
+		if (BEAM[name] == null) continue;
+		var p = getCell(cr);
+		if (beamHits(name, p, gc)) continue;
+		computeHard(true);
+		var dg = distToGoal(goalCells(name, gc), p);
+		if (dg[p] == null) {
+			// aucun chemin en contournant les ennemis : on suppose qu'ils libéreront le passage
+			computeHard(false);
+			dg = distToGoal(goalCells(name, gc), p);
+		}
+		if (dg[p] == null) continue;
+		for (var d in DIRS4) {
+			for (var L = 1; L <= MAX_SLIDE; L++) {
+				var t = cellAt(p, d, L);
+				if (!passable(t)) break;
+				if (dg[t] == null || dg[t] >= dg[p]) continue;
+				for (var o in casterOptions(p, t, d, L)) {
+					var tool = o[0];
+					var walk;
+					if (reach == null) walk = getCellDistance(getCell(), o[1]);
+					else {
+						if (getCooldown(tool) > 0 || getChipCost(tool) > getTP()) continue;
+						walk = reach[o[1]];
+						if (walk == null) continue;
+					}
+					var sc = 1000 - 300 * dg[t] - 10 * walk - (tool == CHIP_INVERSION ? 50 : 0);
+					if (best == null || sc > best[0]) best = [sc, tool, o[1], o[2], cr, walk];
+				}
+			}
+		}
+	}
+	return best;
+}
+
+function canMoveCrystals() {
+	var chips = getChips();
+	return inArray(chips, CHIP_BOXING_GLOVE) || inArray(chips, CHIP_GRAPPLE) || inArray(chips, CHIP_INVERSION);
+}
+
+function misalignedCount(g) {
+	var n = 0;
+	for (var e in getAliveEnemies()) if (BEAM[getName(e)] != null && !beamHits(getName(e), getCell(e), getCell(g))) n++;
+	return n;
+}
+
+// fait glisser les cristaux tant qu'on a les PT ; renvoie true si au moins une glissade a été faite
+function moveCrystals(g) {
+	var done = 0;
+	for (var it = 0; it < 8; it++) {
+		var s = bestSlide(g, getMP());
+		if (s == null) break;
+		if (s[2] != getCell()) moveTowardCell(s[2]);
+		if (getCell() != s[2]) break;
+		var r = s[1] == CHIP_INVERSION ? useChip(CHIP_INVERSION, s[4]) : useChipOnCell(s[1], s[3]);
+		debug('boss T' + getTurn() + ' ' + getName(s[4]) + ' -> ' + s[3] + ' puce ' + s[1] + ' r=' + r + ' case=' + getCell(s[4]));
+		if (r < 0) break;
+		done++;
+	}
+	return done > 0;
+}
+
+// cristal tué alors que le Graal vit : le ressusciter avant le tour du Graal (sinon Apocalypse)
+function rescueCrystals(g) {
+	if (!inArray(getChips(), CHIP_RESURRECTION) || getCooldown(CHIP_RESURRECTION) > 0) return;
+	for (var e in getDeadEnemies()) {
+		var name = getName(e);
+		if (BEAM[name] == null) continue;
+		var best = null, bestSc = -1;
+		for (var c in getCellsToUseChipOnCell(CHIP_RESURRECTION, getCell())) {
+			if (!isEmptyCell(c)) continue;
+			var sc = beamHits(name, c, getCell(g)) ? 2 : 1;
+			if (sc > bestSc) { bestSc = sc; best = c; }
+		}
+		if (best != null && resurrect(e, best) > 0) return;
+	}
+}
+
+function bossTurn(g) {
+	cleanseIfPoisoned();
+	rescueCrystals(g);
+	healSelf(0.4);
+	resurrectAlly();
+	var approached = false;
+	if (canMoveCrystals() && misalignedCount(g) > 0) {
+		useBuffs(TP_BUFF_CHIPS);
+		var moved = moveCrystals(g);
+		if (misalignedCount(g) > 0 && getMP() > 0) {
+			// on reste à pied d'œuvre : marche vers la prochaine case de lancement (bottes si elle est loin
+			// et qu'on n'a encore rien fait), puis nouvel essai avec les PT restants
+			var s = bestSlide(g, null);
+			if (s != null) {
+				if (!moved && getCellDistance(getCell(), s[2]) > getMP()) useBuffs(MP_BUFF_CHIPS);
+				moveTowardCell(s[2]);
+				approached = true;
+				moveCrystals(g);
+			}
+		}
+	}
+	healSelf(0.6);
+	healAllies();
+	useBuffs(SHIELD_CHIPS);
+	useBuffs(RETURN_CHIPS);
+	healSelf(0.9);
+	if (!approached) bossPosition(g);
+}
+
+// =====================================================================
+//  Tour
+// =====================================================================
+var BOSS_GRAAL = graal();
+if (BOSS_GRAAL != null) {
+	bossTurn(BOSS_GRAAL);
+} else if (isSupport()) {
+	supportTurn();
+} else {
+	cleanseIfPoisoned();
+	healSelf(0.4);
+	resurrectAlly();
+
+	var plan = planAttack(getTP());
+	debug('T' + getTurn() + ' life=' + getLife() + ' tp=' + getTP() + ' mp=' + getMP() + ' str=' + getStrength() + ' plan=' + (plan == null ? 'null' : [plan[0], plan[1], getName(plan[2]), plan[3]]) + ' dmgTools=' + DMG_TOOLS);
+
+	if (plan == null && count(MP_BUFF_CHIPS) > 0) {
+		// personne à portée : bottes puis on recalcule
+		// on simule d'abord : les bottes ne servent que si l'attaque en vaut la peine
+		var ready = [];
+		for (var c in MP_BUFF_CHIPS) if (chipReady(c)) push(ready, c);
+		if (count(ready) > 0) {
+			useChip(ready[0], ME);
+			plan = planAttack(getTP());
+			if (plan != null && plan[0] < BOOTS_MIN_SCORE) plan = null;
+		}
+	}
+
+	if (plan != null) {
+		// on peut taper ce tour : boosts PT d'abord, puis force si ça laisse de quoi frapper
+		useBuffs(TP_BUFF_CHIPS);
+		if (plan == null) plan = planAttack(getTP());
+		for (var c in STR_BUFF_CHIPS) {
+			if (chipReady(c) && getTP() - getChipCost(c) >= 6) useChip(c, ME);
+		}
+		// jusqu'à 3 passes (si la cible meurt on retarget)
+		for (var pass = 0; pass < 3 && plan != null && getTP() > 0; pass++) {
+			execute(plan);
+			plan = planAttack(getTP());
+			if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
+		}
+	} else {
+		// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie
+		summonBulbs();
+		position();
+	}
+
+	// PT restants
+	healSelf(0.6);
+	healAllies();
+	if (enemyThreatens()) {
+		useBuffs(SHIELD_CHIPS);
+		useBuffs(RETURN_CHIPS);
+		if (!hasEffect(ME, [EFFECT_RAW_BUFF_STRENGTH, EFFECT_BUFF_STRENGTH]))
+			for (var c in STR_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }  // préparer le tour suivant
+	}
+	healSelf(0.9);
+	summonBulbs();
+	position();
+}
