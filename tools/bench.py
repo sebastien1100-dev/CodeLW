@@ -144,6 +144,41 @@ def team(args):
     return score(fights, lambda sc: sc["_hero_team"])
 
 
+def real(args, ai):
+    """Nos poireaux (vrais, ou clones via --clone) contre les adversaires réels qui nous ont battus (opponents.json)."""
+    data = load("opponents.json")
+    strip = lambda e: {k: v for k, v in e.items() if not k.startswith("_")}  # noqa: E731
+    clones = {}
+    for c in getattr(args, "clone", None) or []:
+        name, spec = c.split("=")
+        build, _, kit = spec.partition(":")
+        clones[name] = clone_entry(name, build, kit or None, ai)
+    me = lambda n: clones.get(n, {"leek": n, "ai": ai})  # noqa: E731
+    scenarios = []
+    for seed in range(args.seed0, args.seed0 + args.seeds):
+        if args.mode == "solo":
+            for o in data["solo"]:
+                hero = args.hero or o["vs"]
+                for swap in (0, 1):
+                    t1, t2 = [me(hero)], [strip(o["opp"])]
+                    if swap:
+                        t1, t2 = t2, t1
+                    scenarios.append({"type": "leek-wars-scenario", "version": 1, "fight": "solo",
+                                      "seed": seed * 7919 + o["fight"] % 1000, "team1": t1, "team2": t2,
+                                      "_hero_team": 2 if swap else 1})
+        else:
+            for t in data["teams"]:
+                mine = [me(n) for n in lw.LEEKS]
+                opp = [strip(e) for e in t["opp"]]
+                for swap in (0, 1):
+                    t1, t2 = (opp, mine) if swap else (mine, opp)
+                    scenarios.append({"type": "leek-wars-scenario", "version": 1, "fight": "farmer",
+                                      "seed": seed * 104729 + t["fight"] % 1000, "team1": t1, "team2": t2,
+                                      "_hero_team": 2 if swap else 1})
+    fights = lw.run_scenarios(scenarios, args.path)
+    return score(fights, lambda sc: sc["_hero_team"])
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -160,6 +195,11 @@ def main():
     s = sub.add_parser("team")
     s.add_argument("--ai", default="Opti")
     s.add_argument("--clone", action="append", help="remplacer un poireau par un clone : nom=répartition[:kit] (répétable)")
+    s = sub.add_parser("real", help="contre les adversaires réels qui nous ont battus (tools/opponents.json)")
+    s.add_argument("--mode", choices=["solo", "team"], default="team")
+    s.add_argument("--ai", default="Opti")
+    s.add_argument("--hero", choices=list(lw.LEEKS), help="mode solo : ce poireau contre tous (sinon le poireau qui a perdu)")
+    s.add_argument("--clone", action="append", help="remplacer un poireau par un clone : nom=répartition[:kit]")
     s = sub.add_parser("upload")
     s.add_argument("file")
     s.add_argument("--as", dest="target", required=True, help="chemin du fichier sur Leek Wars")
@@ -181,6 +221,8 @@ def main():
         report(f"{args.hero} [{args.ai2}]", duel(args, args.ai2))
     elif args.cmd == "team":
         report(f"4c4 [{args.ai}] contre bots", team(args))
+    elif args.cmd == "real":
+        report(f"{args.mode} [{args.ai}] contre adversaires réels", real(args, args.ai))
     if args.cmd != "upload":
         lw.api("DELETE", "ai/delete", path=args.path)  # ne pas laisser le fichier de scénario dans l'éditeur
 
