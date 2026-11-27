@@ -90,9 +90,22 @@ if (getTurn() == 1) classify();
 function isStatic(e) {
 	return getTotalMP(e) == 0 && count(getWeapons(e)) == 0 && count(getChips(e)) == 0;
 }
+// invincible (état donné par exemple par le graal des boss) : inutile de le frapper
+function isInvincible(e) {
+	for (var ef in getEffects(e)) if (ef[0] == EFFECT_ADD_STATE && ef[1] == STATE_INVINCIBLE) return true;
+	return false;
+}
 function foes() {
 	var res = [];
-	for (var e in getAliveEnemies()) if (!isStatic(e)) push(res, e);
+	var shielded = false;
+	for (var e in getAliveEnemies()) {
+		if (isInvincible(e)) { shielded = true; continue; }
+		if (!isStatic(e)) push(res, e);
+	}
+	// boss : tant que des ennemis sont invincibles, les objectifs immobiles (cristaux, graal) deviennent des cibles
+	if (shielded) {
+		for (var e in getAliveEnemies()) if (isStatic(e) && !isInvincible(e)) push(res, e);
+	}
 	return count(res) > 0 ? res : getAliveEnemies();
 }
 function nearestFoe() {
