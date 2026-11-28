@@ -693,7 +693,12 @@ function updateStall() {
 	for (var e in threats()) sig += getLife(e);
 	if (sig != LAST_SIG) { LAST_SIG = sig; LAST_CHANGE = getTurn(); }
 }
-function isStalled() { return getTurn() - LAST_CHANGE >= STALL_TURNS; }
+function isStalled() {
+	// seulement en duel (un seul poireau ennemi) : en équipe, la chasse n'a pas montré de gain
+	var leeks = 0;
+	for (var e in threats()) if (!isSummon(e)) leeks++;
+	return leeks == 1 && getTurn() - LAST_CHANGE >= STALL_TURNS;
+}
 
 // chasse : marcher vers la case d'attaque la plus proche (par le chemin réel, obstacles compris)
 // de l'ennemi le plus proche, pour pouvoir frapper au tour suivant
