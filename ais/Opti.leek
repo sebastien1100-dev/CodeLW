@@ -11,6 +11,7 @@ global USE_BULBS = true;
 global DANGER_W = 0.6;      // poids des dégâts encaissables dans le choix de la case d'attaque
 global LOS_FACTOR = 0.6;    // dégâts attendus d'un ennemi sans ligne de vue actuelle
 global SAFE_RATIO = 0.05;
+global STALL_TURNS = 4;     // tours sans aucun dégât échangé avant d'aller chercher l'adversaire
 global SUPPORT_RANGE = 5;   // portée typique des boosts sur allié
 global FOCUS_MULT = 1.4;    // bonus pour la cible commune de l'équipe (combats à plusieurs)   // en dessous de ce % de ma vie, une case est considérée sûre
 global BOOTS_MIN_SCORE = 500;  // valeur mini d'une attaque pour justifier les bottes
@@ -683,12 +684,44 @@ function supportTurn() {
 	if (cell != getCell()) moveTowardCell(cell);
 }
 
+// ---------- sortir des attentes stériles (matchs nuls à 64 tours) ----------
+// "signature" du combat : ma vie + la vie des ennemis ; si rien ne bouge pendant STALL_TURNS tours, on chasse
+global LAST_SIG = -1;
+global LAST_CHANGE = 1;
+function updateStall() {
+	var sig = getLife();
+	for (var e in threats()) sig += getLife(e);
+	if (sig != LAST_SIG) { LAST_SIG = sig; LAST_CHANGE = getTurn(); }
+}
+function isStalled() { return getTurn() - LAST_CHANGE >= STALL_TURNS; }
+
+// chasse : marcher vers la case d'attaque la plus proche (par le chemin réel, obstacles compris)
+// de l'ennemi le plus proche, pour pouvoir frapper au tour suivant
+function hunt() {
+	var target = nearestFoe();
+	if (target == null || getMP() <= 0) return;
+	for (var c in MP_BUFF_CHIPS) if (chipReady(c)) { useChip(c, ME); break; }
+	var best = null, bestLen = 100000;
+	for (var tool in DMG_TOOLS) {
+		var cells = cellsFor(tool, target);
+		if (cells == null) continue;
+		for (var c : var v in cells) {
+			var l = getPathLength(getCell(), c);
+			if (l != null && l < bestLen) { bestLen = l; best = c; }
+		}
+	}
+	if (best != null) moveTowardCell(best);
+	else moveToward(target);
+}
+
 // =====================================================================
 //  Tour
 // =====================================================================
 if (isSupport()) {
 	supportTurn();
 } else {
+	updateStall();
+	var hunting = false;
 	cleanseIfPoisoned();
 	healSelf(0.4);
 	resurrectAlly();
@@ -722,9 +755,11 @@ if (isSupport()) {
 			if (plan != null && plan[1] != getCell() && getMP() == 0) plan = null;
 		}
 	} else {
-		// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie
+		// rien à portée : on invoque, puis on se place à la limite de la zone de menace ennemie,
+		// sauf si plus rien ne se passe depuis plusieurs tours : on va chercher l'adversaire
 		summonBulbs();
-		position();
+		if (isStalled()) { hunt(); hunting = true; }
+		else position();
 	}
 
 	// PT restants
@@ -738,5 +773,5 @@ if (isSupport()) {
 	}
 	healSelf(0.9);
 	summonBulbs();
-	position();
+	if (!hunting) position();
 }

@@ -1,7 +1,884 @@
 {
- "collected": "2026-11-27 12:30",
- "days": 3,
+ "collected": "2026-11-28 10:10",
+ "days": 4,
  "solo": [
+  {
+   "fight": 55018830,
+   "vs": "jessy",
+   "opp": {
+    "name": "Azyr",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "grenade_launcher",
+     "bazooka",
+     "lightninger",
+     "heavy_sword"
+    ],
+    "chips": [
+     "protein",
+     "motivation",
+     "wall",
+     "cure",
+     "leather_boots",
+     "shield",
+     "stalactite",
+     "armoring",
+     "armor",
+     "rockfall",
+     "vaccine",
+     "iceberg",
+     "steroid",
+     "meteorite"
+    ],
+    "life": 2837,
+    "strength": 470,
+    "wisdom": 330,
+    "agility": 340,
+    "resistance": 310,
+    "science": 20,
+    "magic": 0,
+    "frequency": 130,
+    "tp": 22,
+    "mp": 4,
+    "cores": 8,
+    "ram": 14,
+    "_id": 103799,
+    "_talent": 1372
+   }
+  },
+  {
+   "fight": 55018828,
+   "vs": "Kador",
+   "opp": {
+    "name": "Lithium7",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "laser",
+     "axe",
+     "rhino",
+     "enhanced_lightninger"
+    ],
+    "chips": [
+     "protein",
+     "wall",
+     "spark",
+     "shield",
+     "liberation",
+     "armoring",
+     "jump",
+     "armor",
+     "antidote",
+     "regeneration",
+     "steroid",
+     "adrenaline",
+     "meteorite",
+     "remission",
+     "healer_bulb",
+     "lightning",
+     "fortress",
+     "serum",
+     "lightning_bulb"
+    ],
+    "life": 1697,
+    "strength": 400,
+    "wisdom": 200,
+    "agility": 0,
+    "resistance": 410,
+    "science": 20,
+    "magic": 0,
+    "frequency": 120,
+    "tp": 22,
+    "mp": 6,
+    "cores": 22,
+    "ram": 22,
+    "_id": 90394,
+    "_talent": 1352
+   }
+  },
+  {
+   "fight": 55018827,
+   "vs": "Enzo",
+   "opp": {
+    "name": "AspergeDuPauvre1",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "magnum",
+     "rhino",
+     "lightninger",
+     "katana"
+    ],
+    "chips": [
+     "protein",
+     "helmet",
+     "wall",
+     "cure",
+     "shield",
+     "solidification",
+     "puny_bulb",
+     "liberation",
+     "armor",
+     "vaccine",
+     "antidote",
+     "regeneration",
+     "steroid",
+     "adrenaline",
+     "remission",
+     "fortress",
+     "teleportation",
+     "elevation",
+     "therapy"
+    ],
+    "life": 2003,
+    "strength": 497,
+    "wisdom": 200,
+    "agility": 200,
+    "resistance": 200,
+    "science": 0,
+    "magic": 100,
+    "frequency": 100,
+    "tp": 20,
+    "mp": 5,
+    "cores": 20,
+    "ram": 20,
+    "_id": 82634,
+    "_talent": 1423
+   }
+  },
+  {
+   "fight": 55018825,
+   "vs": "sebo",
+   "opp": {
+    "name": "DragonFly",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "pistol",
+     "magnum",
+     "unstable_destroyer"
+    ],
+    "chips": [
+     "bandage",
+     "protein",
+     "helmet",
+     "motivation",
+     "stretching",
+     "leather_boots",
+     "shield",
+     "venom",
+     "armoring",
+     "armor",
+     "mutation",
+     "prism",
+     "regeneration",
+     "adrenaline"
+    ],
+    "life": 2330,
+    "strength": 500,
+    "wisdom": 430,
+    "agility": 365,
+    "resistance": 300,
+    "science": 40,
+    "magic": 0,
+    "frequency": 130,
+    "tp": 23,
+    "mp": 5,
+    "cores": 8,
+    "ram": 15,
+    "_id": 89620,
+    "_talent": 1355
+   }
+  },
+  {
+   "fight": 55018822,
+   "vs": "jessy",
+   "opp": {
+    "name": "Cuan",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "neutrino",
+     "shotgun",
+     "sword",
+     "mysterious_electrisor"
+    ],
+    "chips": [
+     "bandage",
+     "motivation",
+     "wall",
+     "spark",
+     "cure",
+     "leather_boots",
+     "shield",
+     "liberation",
+     "armoring",
+     "armor",
+     "vaccine",
+     "antidote",
+     "regeneration",
+     "remission"
+    ],
+    "life": 3362,
+    "strength": 220,
+    "wisdom": 555,
+    "agility": 4,
+    "resistance": 525,
+    "science": 40,
+    "magic": 0,
+    "frequency": 153,
+    "tp": 20,
+    "mp": 6,
+    "cores": 4,
+    "ram": 16,
+    "_id": 108007,
+    "_talent": 1376
+   }
+  },
+  {
+   "fight": 55018817,
+   "vs": "sebo",
+   "opp": {
+    "name": "BioPowa",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "destroyer",
+     "axe",
+     "mysterious_electrisor"
+    ],
+    "chips": [
+     "bandage",
+     "protein",
+     "helmet",
+     "wall",
+     "knowledge",
+     "shield",
+     "solidification",
+     "armoring",
+     "armor",
+     "antidote",
+     "steroid",
+     "adrenaline",
+     "fortress",
+     "elevation",
+     "mirror"
+    ],
+    "life": 2255,
+    "strength": 400,
+    "wisdom": 400,
+    "agility": 200,
+    "resistance": 275,
+    "science": 0,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 19,
+    "mp": 6,
+    "cores": 20,
+    "ram": 20,
+    "_id": 68582,
+    "_talent": 1354
+   }
+  },
+  {
+   "fight": 55018816,
+   "vs": "Kador",
+   "opp": {
+    "name": "pyleLEEKtrykdu31",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "rhino",
+     "rifle",
+     "quantum_rifle",
+     "heavy_sword"
+    ],
+    "chips": [
+     "spark",
+     "cure",
+     "leather_boots",
+     "shield",
+     "stalactite",
+     "drip",
+     "armoring",
+     "jump",
+     "armor",
+     "vaccine",
+     "mutation",
+     "antidote",
+     "regeneration",
+     "steroid",
+     "acceleration",
+     "inversion",
+     "adrenaline",
+     "remission",
+     "winged_boots",
+     "serum",
+     "teleportation",
+     "desintegration",
+     "rage",
+     "elevation"
+    ],
+    "life": 2229,
+    "strength": 400,
+    "wisdom": 530,
+    "agility": 240,
+    "resistance": 310,
+    "science": 476,
+    "magic": 0,
+    "frequency": 160,
+    "tp": 22,
+    "mp": 4,
+    "cores": 6,
+    "ram": 24,
+    "_id": 130591,
+    "_talent": 1344
+   }
+  },
+  {
+   "fight": 55018812,
+   "vs": "Kador",
+   "opp": {
+    "name": "djokavette2",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "machine_gun",
+     "shotgun",
+     "illicit_grenade_launcher",
+     "j_laser"
+    ],
+    "chips": [
+     "motivation",
+     "wall",
+     "shield",
+     "solidification",
+     "drip",
+     "armoring",
+     "armor",
+     "antidote",
+     "rampart",
+     "regeneration",
+     "warm_up",
+     "steroid",
+     "covetousness",
+     "adrenaline",
+     "remission",
+     "fortress",
+     "reflexes",
+     "seven_league_boots",
+     "doping",
+     "rage"
+    ],
+    "life": 2000,
+    "strength": 0,
+    "wisdom": 300,
+    "agility": 200,
+    "resistance": 301,
+    "science": 402,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 20,
+    "mp": 7,
+    "cores": 20,
+    "ram": 20,
+    "_id": 76336,
+    "_talent": 1315
+   }
+  },
+  {
+   "fight": 55018811,
+   "vs": "Enzo",
+   "opp": {
+    "name": "Kalindras",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "electrisor",
+     "enhanced_lightninger",
+     "katana"
+    ],
+    "chips": [
+     "motivation",
+     "wall",
+     "stalactite",
+     "liberation",
+     "armor",
+     "vaccine",
+     "antidote",
+     "regeneration",
+     "iced_bulb",
+     "steroid",
+     "covetousness",
+     "meteorite",
+     "remission",
+     "healer_bulb",
+     "lightning",
+     "fire_bulb",
+     "fortress",
+     "burning",
+     "rage",
+     "metallic_bulb"
+    ],
+    "life": 1996,
+    "strength": 450,
+    "wisdom": 303,
+    "agility": 100,
+    "resistance": 252,
+    "science": 152,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 19,
+    "mp": 7,
+    "cores": 20,
+    "ram": 20,
+    "_id": 32798,
+    "_talent": 1393
+   }
+  },
+  {
+   "fight": 55018810,
+   "vs": "jessy",
+   "opp": {
+    "name": "Ouagadougou",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "rhino",
+     "enhanced_lightninger",
+     "heavy_sword",
+     "m_laser"
+    ],
+    "chips": [
+     "bandage",
+     "protein",
+     "motivation",
+     "wall",
+     "cure",
+     "shield",
+     "solidification",
+     "liberation",
+     "armor",
+     "iceberg",
+     "antidote",
+     "regeneration",
+     "iced_bulb",
+     "steroid",
+     "inversion",
+     "adrenaline",
+     "meteorite",
+     "fortress",
+     "serum",
+     "elevation"
+    ],
+    "life": 2430,
+    "strength": 510,
+    "wisdom": 320,
+    "agility": 330,
+    "resistance": 270,
+    "science": 20,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 19,
+    "mp": 6,
+    "cores": 20,
+    "ram": 20,
+    "_id": 89927,
+    "_talent": 1319
+   }
+  },
+  {
+   "fight": 55018807,
+   "vs": "Enzo",
+   "opp": {
+    "name": "Alpha4",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "broadsword",
+     "enhanced_lightninger",
+     "heavy_sword"
+    ],
+    "chips": [
+     "protein",
+     "motivation",
+     "wall",
+     "leather_boots",
+     "knowledge",
+     "solidification",
+     "liberation",
+     "corn",
+     "armoring",
+     "jump",
+     "vaccine",
+     "mutation",
+     "antidote",
+     "steroid",
+     "adrenaline",
+     "remission",
+     "fortress",
+     "serum",
+     "rage",
+     "dome",
+     "mirror"
+    ],
+    "life": 2212,
+    "strength": 461,
+    "wisdom": 550,
+    "agility": 370,
+    "resistance": 370,
+    "science": 505,
+    "magic": 20,
+    "frequency": 140,
+    "tp": 19,
+    "mp": 6,
+    "cores": 4,
+    "ram": 21,
+    "_id": 126134,
+    "_talent": 1393
+   }
+  },
+  {
+   "fight": 55018805,
+   "vs": "sebo",
+   "opp": {
+    "name": "Bulette",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "grenade_launcher",
+     "electrisor",
+     "katana",
+     "m_laser"
+    ],
+    "chips": [
+     "protein",
+     "liberation",
+     "armoring",
+     "vaccine",
+     "antidote",
+     "regeneration",
+     "warm_up",
+     "steroid",
+     "remission",
+     "winged_boots",
+     "reflexes",
+     "seven_league_boots",
+     "doping"
+    ],
+    "life": 1756,
+    "strength": 402,
+    "wisdom": 402,
+    "agility": 0,
+    "resistance": 0,
+    "science": 404,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 16,
+    "mp": 9,
+    "cores": 20,
+    "ram": 20,
+    "_id": 53596,
+    "_talent": 1297
+   }
+  },
+  {
+   "fight": 55018803,
+   "vs": "Enzo",
+   "opp": {
+    "name": "PititBoo",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "destroyer",
+     "electrisor",
+     "katana",
+     "m_laser"
+    ],
+    "chips": [
+     "wall",
+     "shield",
+     "stalactite",
+     "liberation",
+     "armoring",
+     "armor",
+     "vaccine",
+     "iceberg",
+     "antidote",
+     "rampart",
+     "regeneration",
+     "covetousness",
+     "inversion",
+     "meteorite",
+     "remission",
+     "healer_bulb",
+     "vampirization",
+     "fortress",
+     "lightning_bulb"
+    ],
+    "life": 1780,
+    "strength": 425,
+    "wisdom": 305,
+    "agility": 0,
+    "resistance": 305,
+    "science": 0,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 21,
+    "mp": 6,
+    "cores": 20,
+    "ram": 20,
+    "_id": 76014,
+    "_talent": 1423
+   }
+  },
+  {
+   "fight": 55018800,
+   "vs": "Kador",
+   "opp": {
+    "name": "Helium4",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "lightninger",
+     "rifle",
+     "m_laser",
+     "revoked_m_laser"
+    ],
+    "chips": [
+     "protein",
+     "wall",
+     "spark",
+     "shield",
+     "liberation",
+     "armoring",
+     "jump",
+     "armor",
+     "antidote",
+     "regeneration",
+     "iced_bulb",
+     "steroid",
+     "adrenaline",
+     "meteorite",
+     "remission",
+     "lightning",
+     "fire_bulb",
+     "fortress",
+     "wizard_bulb",
+     "metallic_bulb",
+     "savant_bulb",
+     "therapy"
+    ],
+    "life": 2092,
+    "strength": 400,
+    "wisdom": 200,
+    "agility": 0,
+    "resistance": 400,
+    "science": 40,
+    "magic": 0,
+    "frequency": 110,
+    "tp": 21,
+    "mp": 6,
+    "cores": 22,
+    "ram": 28,
+    "_id": 90352,
+    "_talent": 1357
+   }
+  },
+  {
+   "fight": 55018799,
+   "vs": "Enzo",
+   "opp": {
+    "name": "r01",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "flame_thrower",
+     "b_laser",
+     "katana",
+     "gazor"
+    ],
+    "chips": [
+     "venom",
+     "liberation",
+     "tranquilizer",
+     "armoring",
+     "vaccine",
+     "antidote",
+     "regeneration",
+     "toxin",
+     "teleportation",
+     "plague",
+     "fracture",
+     "resurrection"
+    ],
+    "life": 2105,
+    "strength": 0,
+    "wisdom": 403,
+    "agility": 0,
+    "resistance": 0,
+    "science": 0,
+    "magic": 403,
+    "frequency": 100,
+    "tp": 18,
+    "mp": 9,
+    "cores": 20,
+    "ram": 20,
+    "_id": 51053,
+    "_talent": 1437
+   }
+  },
+  {
+   "fight": 55018798,
+   "vs": "jessy",
+   "opp": {
+    "name": "Helium4",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "lightninger",
+     "rifle",
+     "m_laser",
+     "revoked_m_laser"
+    ],
+    "chips": [
+     "protein",
+     "wall",
+     "spark",
+     "shield",
+     "liberation",
+     "armoring",
+     "jump",
+     "armor",
+     "antidote",
+     "regeneration",
+     "iced_bulb",
+     "steroid",
+     "adrenaline",
+     "meteorite",
+     "remission",
+     "lightning",
+     "fire_bulb",
+     "fortress",
+     "wizard_bulb",
+     "metallic_bulb",
+     "savant_bulb",
+     "therapy"
+    ],
+    "life": 2092,
+    "strength": 400,
+    "wisdom": 200,
+    "agility": 0,
+    "resistance": 400,
+    "science": 40,
+    "magic": 0,
+    "frequency": 110,
+    "tp": 21,
+    "mp": 6,
+    "cores": 22,
+    "ram": 28,
+    "_id": 90352,
+    "_talent": 1357
+   }
+  },
+  {
+   "fight": 55018796,
+   "vs": "Kador",
+   "opp": {
+    "name": "WildCoyote",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "bazooka",
+     "rhino",
+     "mysterious_electrisor",
+     "katana"
+    ],
+    "chips": [
+     "bandage",
+     "protein",
+     "helmet",
+     "wall",
+     "spark",
+     "drip",
+     "liberation",
+     "armoring",
+     "armor",
+     "vaccine",
+     "iceberg",
+     "regeneration",
+     "steroid",
+     "meteorite",
+     "remission",
+     "lightning",
+     "fortress",
+     "serum",
+     "teleportation",
+     "elevation"
+    ],
+    "life": 2087,
+    "strength": 400,
+    "wisdom": 340,
+    "agility": 230,
+    "resistance": 330,
+    "science": 0,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 18,
+    "mp": 6,
+    "cores": 20,
+    "ram": 20,
+    "_id": 29933,
+    "_talent": 1346
+   }
+  },
+  {
+   "fight": 55018795,
+   "vs": "Enzo",
+   "opp": {
+    "name": "ChevalNoir",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "destroyer",
+     "flame_thrower",
+     "katana",
+     "gazor"
+    ],
+    "chips": [
+     "tranquilizer",
+     "armoring",
+     "armor",
+     "antidote",
+     "rampart",
+     "toxin",
+     "soporific",
+     "remission",
+     "ball_and_chain",
+     "fortress",
+     "teleportation",
+     "fertilizer",
+     "plague",
+     "metallic_bulb",
+     "fracture"
+    ],
+    "life": 1952,
+    "strength": 0,
+    "wisdom": 206,
+    "agility": 0,
+    "resistance": 206,
+    "science": 0,
+    "magic": 409,
+    "frequency": 100,
+    "tp": 21,
+    "mp": 8,
+    "cores": 20,
+    "ram": 20,
+    "_id": 41935,
+    "_talent": 1438
+   }
+  },
   {
    "fight": 54977509,
    "vs": "Kador",
@@ -49,7 +926,7 @@
     "cores": 22,
     "ram": 22,
     "_id": 90394,
-    "_talent": 1337
+    "_talent": 1352
    }
   },
   {
@@ -196,6 +1073,57 @@
    }
   },
   {
+   "fight": 54977502,
+   "vs": "sebo",
+   "opp": {
+    "name": "Kestutraines",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "double_gun",
+     "flame_thrower",
+     "electrisor",
+     "revoked_m_laser"
+    ],
+    "chips": [
+     "spark",
+     "cure",
+     "shield",
+     "venom",
+     "stalactite",
+     "armoring",
+     "jump",
+     "armor",
+     "rockfall",
+     "vaccine",
+     "iceberg",
+     "antidote",
+     "regeneration",
+     "toxin",
+     "meteorite",
+     "remission",
+     "fortress",
+     "burning",
+     "plague",
+     "plasma"
+    ],
+    "life": 2135,
+    "strength": 403,
+    "wisdom": 403,
+    "agility": 0,
+    "resistance": 403,
+    "science": 0,
+    "magic": 403,
+    "frequency": 100,
+    "tp": 15,
+    "mp": 5,
+    "cores": 20,
+    "ram": 20,
+    "_id": 74455,
+    "_talent": 1292
+   }
+  },
+  {
    "fight": 54977500,
    "vs": "Enzo",
    "opp": {
@@ -242,6 +1170,52 @@
    }
   },
   {
+   "fight": 54977499,
+   "vs": "jessy",
+   "opp": {
+    "name": "deucli",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "bazooka",
+     "mysterious_electrisor",
+     "heavy_sword",
+     "m_laser"
+    ],
+    "chips": [
+     "protein",
+     "spark",
+     "shield",
+     "venom",
+     "stalactite",
+     "jump",
+     "armor",
+     "iceberg",
+     "meteorite",
+     "remission",
+     "fire_bulb",
+     "serum",
+     "plague",
+     "covid",
+     "arsenic"
+    ],
+    "life": 1667,
+    "strength": 500,
+    "wisdom": 300,
+    "agility": 90,
+    "resistance": 400,
+    "science": 140,
+    "magic": 400,
+    "frequency": 160,
+    "tp": 22,
+    "mp": 8,
+    "cores": 8,
+    "ram": 15,
+    "_id": 105399,
+    "_talent": 1279
+   }
+  },
+  {
    "fight": 54977497,
    "vs": "Kador",
    "opp": {
@@ -283,7 +1257,7 @@
     "cores": 8,
     "ram": 14,
     "_id": 103799,
-    "_talent": 1357
+    "_talent": 1372
    }
   },
   {
@@ -371,6 +1345,49 @@
     "ram": 20,
     "_id": 40580,
     "_talent": 1308
+   }
+  },
+  {
+   "fight": 54977491,
+   "vs": "Enzo",
+   "opp": {
+    "name": "Agent212",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "destroyer",
+     "b_laser",
+     "electrisor",
+     "m_laser"
+    ],
+    "chips": [
+     "spark",
+     "liberation",
+     "armoring",
+     "rockfall",
+     "vaccine",
+     "iceberg",
+     "inversion",
+     "meteorite",
+     "healer_bulb",
+     "lightning",
+     "teleportation",
+     "metallic_bulb"
+    ],
+    "life": 1960,
+    "strength": 590,
+    "wisdom": 310,
+    "agility": 0,
+    "resistance": 0,
+    "science": 0,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 19,
+    "mp": 7,
+    "cores": 20,
+    "ram": 20,
+    "_id": 22769,
+    "_talent": 1372
    }
   },
   {
@@ -528,7 +1545,7 @@
     "cores": 20,
     "ram": 20,
     "_id": 29933,
-    "_talent": 1331
+    "_talent": 1346
    }
   },
   {
@@ -677,7 +1694,7 @@
     "cores": 6,
     "ram": 24,
     "_id": 130591,
-    "_talent": 1329
+    "_talent": 1344
    }
   },
   {
@@ -726,7 +1743,7 @@
     "cores": 7,
     "ram": 18,
     "_id": 129351,
-    "_talent": 1520
+    "_talent": 1511
    }
   },
   {
@@ -1005,7 +2022,7 @@
     "cores": 20,
     "ram": 20,
     "_id": 77038,
-    "_talent": 1326
+    "_talent": 1311
    }
   },
   {
@@ -1052,6 +2069,47 @@
     "ram": 20,
     "_id": 33331,
     "_talent": 1361
+   }
+  },
+  {
+   "fight": 54948712,
+   "vs": "jessy",
+   "opp": {
+    "name": "CouteauDeChef",
+    "level": 300,
+    "ai": "@expert",
+    "weapons": [
+     "axe",
+     "grenade_launcher"
+    ],
+    "chips": [
+     "shield",
+     "stalactite",
+     "liberation",
+     "armoring",
+     "armor",
+     "vaccine",
+     "iceberg",
+     "antidote",
+     "regeneration",
+     "remission",
+     "lightning",
+     "fortress"
+    ],
+    "life": 1669,
+    "strength": 504,
+    "wisdom": 262,
+    "agility": 0,
+    "resistance": 201,
+    "science": 0,
+    "magic": 0,
+    "frequency": 100,
+    "tp": 19,
+    "mp": 6,
+    "cores": 20,
+    "ram": 20,
+    "_id": 67713,
+    "_talent": 1238
    }
   },
   {
@@ -1329,7 +2387,7 @@
     "cores": 6,
     "ram": 24,
     "_id": 130591,
-    "_talent": 1329
+    "_talent": 1344
    }
   },
   {
@@ -1615,9 +2673,733 @@
     "_id": 76437,
     "_talent": 1145
    }
+  },
+  {
+   "fight": 54922142,
+   "vs": "sebo",
+   "opp": {
+    "name": "Divinebeast",
+    "level": 301,
+    "ai": "@expert",
+    "weapons": [
+     "flame_thrower",
+     "gazor"
+    ],
+    "chips": [
+     "shield",
+     "venom",
+     "liberation",
+     "armoring",
+     "armor",
+     "antidote",
+     "regeneration",
+     "toxin",
+     "remission",
+     "healer_bulb",
+     "fire_bulb",
+     "fortress",
+     "plague",
+     "fracture",
+     "lightning_bulb"
+    ],
+    "life": 1620,
+    "strength": 0,
+    "wisdom": 200,
+    "agility": 200,
+    "resistance": 200,
+    "science": 0,
+    "magic": 500,
+    "frequency": 100,
+    "tp": 20,
+    "mp": 7,
+    "cores": 20,
+    "ram": 20,
+    "_id": 65275,
+    "_talent": 1088
+   }
   }
  ],
  "teams": [
+  {
+   "fight": 55018838,
+   "opp": [
+    {
+     "name": "ArtyChaud",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "double_gun",
+      "destroyer",
+      "electrisor",
+      "m_laser"
+     ],
+     "chips": [
+      "wall",
+      "spark",
+      "shield",
+      "liberation",
+      "armoring",
+      "armor",
+      "vaccine",
+      "regeneration",
+      "meteorite",
+      "remission",
+      "lightning",
+      "fortress",
+      "teleportation"
+     ],
+     "life": 2093,
+     "strength": 424,
+     "wisdom": 424,
+     "agility": 0,
+     "resistance": 333,
+     "science": 0,
+     "magic": 0,
+     "frequency": 100,
+     "tp": 14,
+     "mp": 9,
+     "cores": 20,
+     "ram": 20,
+     "_id": 26156,
+     "_talent": 1267
+    },
+    {
+     "name": "LeekeurAuChocolat",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "pistol",
+      "destroyer",
+      "electrisor",
+      "m_laser"
+     ],
+     "chips": [
+      "wall",
+      "spark",
+      "shield",
+      "liberation",
+      "armoring",
+      "armor",
+      "vaccine",
+      "regeneration",
+      "meteorite",
+      "remission",
+      "lightning",
+      "fortress",
+      "teleportation"
+     ],
+     "life": 1740,
+     "strength": 458,
+     "wisdom": 406,
+     "agility": 0,
+     "resistance": 406,
+     "science": 0,
+     "magic": 0,
+     "frequency": 100,
+     "tp": 16,
+     "mp": 8,
+     "cores": 20,
+     "ram": 20,
+     "_id": 26590,
+     "_talent": 1357
+    },
+    {
+     "name": "Leexcalibur",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "destroyer",
+      "electrisor",
+      "gazor",
+      "m_laser"
+     ],
+     "chips": [
+      "wall",
+      "spark",
+      "shield",
+      "liberation",
+      "armoring",
+      "armor",
+      "vaccine",
+      "regeneration",
+      "meteorite",
+      "remission",
+      "lightning",
+      "fortress",
+      "teleportation"
+     ],
+     "life": 2093,
+     "strength": 424,
+     "wisdom": 333,
+     "agility": 0,
+     "resistance": 424,
+     "science": 0,
+     "magic": 0,
+     "frequency": 100,
+     "tp": 14,
+     "mp": 9,
+     "cores": 20,
+     "ram": 20,
+     "_id": 28681,
+     "_talent": 1220
+    },
+    {
+     "name": "Crona",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "magnum",
+      "destroyer",
+      "electrisor",
+      "m_laser"
+     ],
+     "chips": [
+      "wall",
+      "spark",
+      "shield",
+      "liberation",
+      "armoring",
+      "armor",
+      "vaccine",
+      "regeneration",
+      "meteorite",
+      "remission",
+      "lightning",
+      "fortress",
+      "teleportation"
+     ],
+     "life": 1740,
+     "strength": 458,
+     "wisdom": 406,
+     "agility": 0,
+     "resistance": 406,
+     "science": 0,
+     "magic": 0,
+     "frequency": 100,
+     "tp": 16,
+     "mp": 8,
+     "cores": 20,
+     "ram": 20,
+     "_id": 30280,
+     "_talent": 1373
+    }
+   ]
+  },
+  {
+   "fight": 55018836,
+   "opp": [
+    {
+     "name": "Massili",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "cure",
+      "shield",
+      "venom",
+      "liberation",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "soporific",
+      "remission",
+      "healer_bulb",
+      "fire_bulb",
+      "fortress",
+      "plague",
+      "fracture",
+      "lightning_bulb"
+     ],
+     "life": 1720,
+     "strength": 0,
+     "wisdom": 200,
+     "agility": 200,
+     "resistance": 200,
+     "science": 0,
+     "magic": 497,
+     "frequency": 100,
+     "tp": 21,
+     "mp": 7,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65251,
+     "_talent": 1624
+    },
+    {
+     "name": "Darknix",
+     "level": 300,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "shield",
+      "venom",
+      "liberation",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "remission",
+      "healer_bulb",
+      "fire_bulb",
+      "fortress",
+      "plague",
+      "fracture",
+      "lightning_bulb"
+     ],
+     "life": 1617,
+     "strength": 0,
+     "wisdom": 200,
+     "agility": 200,
+     "resistance": 200,
+     "science": 0,
+     "magic": 460,
+     "frequency": 100,
+     "tp": 21,
+     "mp": 7,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65320,
+     "_talent": 1620
+    },
+    {
+     "name": "Hesione",
+     "level": 300,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "venom",
+      "liberation",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "covetousness",
+      "acceleration",
+      "soporific",
+      "adrenaline",
+      "wizardry",
+      "remission",
+      "fortress",
+      "plague",
+      "covid",
+      "elevation",
+      "fracture",
+      "arsenic"
+     ],
+     "life": 1617,
+     "strength": 0,
+     "wisdom": 200,
+     "agility": 200,
+     "resistance": 200,
+     "science": 0,
+     "magic": 500,
+     "frequency": 100,
+     "tp": 20,
+     "mp": 7,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65655,
+     "_talent": 1608
+    },
+    {
+     "name": "DayOne",
+     "level": 300,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "shield",
+      "venom",
+      "liberation",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "soporific",
+      "remission",
+      "healer_bulb",
+      "fortress",
+      "fracture"
+     ],
+     "life": 1705,
+     "strength": 0,
+     "wisdom": 102,
+     "agility": 100,
+     "resistance": 98,
+     "science": 0,
+     "magic": 481,
+     "frequency": 100,
+     "tp": 22,
+     "mp": 7,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65940,
+     "_talent": 1410
+    }
+   ]
+  },
+  {
+   "fight": 55018834,
+   "opp": [
+    {
+     "name": "LegendClaudio",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "shield",
+      "venom",
+      "liberation",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "remission",
+      "healer_bulb",
+      "fire_bulb",
+      "fortress",
+      "plague",
+      "fracture",
+      "lightning_bulb"
+     ],
+     "life": 1700,
+     "strength": 0,
+     "wisdom": 200,
+     "agility": 200,
+     "resistance": 200,
+     "science": 0,
+     "magic": 500,
+     "frequency": 100,
+     "tp": 21,
+     "mp": 7,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65213,
+     "_talent": 1299
+    },
+    {
+     "name": "Divinebeast",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "shield",
+      "venom",
+      "liberation",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "remission",
+      "healer_bulb",
+      "fire_bulb",
+      "fortress",
+      "plague",
+      "fracture",
+      "lightning_bulb"
+     ],
+     "life": 1620,
+     "strength": 0,
+     "wisdom": 200,
+     "agility": 200,
+     "resistance": 200,
+     "science": 0,
+     "magic": 500,
+     "frequency": 100,
+     "tp": 20,
+     "mp": 7,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65275,
+     "_talent": 1088
+    },
+    {
+     "name": "Nerobi",
+     "level": 300,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "shield",
+      "venom",
+      "liberation",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "soporific",
+      "remission",
+      "healer_bulb",
+      "fire_bulb",
+      "fortress",
+      "fracture"
+     ],
+     "life": 1637,
+     "strength": 0,
+     "wisdom": 200,
+     "agility": 200,
+     "resistance": 200,
+     "science": 0,
+     "magic": 457,
+     "frequency": 100,
+     "tp": 21,
+     "mp": 7,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65649,
+     "_talent": 1076
+    },
+    {
+     "name": "Jimhoten",
+     "level": 300,
+     "ai": "@expert",
+     "weapons": [
+      "flame_thrower",
+      "gazor"
+     ],
+     "chips": [
+      "venom",
+      "liberation",
+      "tranquilizer",
+      "armoring",
+      "armor",
+      "antidote",
+      "regeneration",
+      "toxin",
+      "covetousness",
+      "acceleration",
+      "soporific",
+      "adrenaline",
+      "wizardry",
+      "remission",
+      "fortress",
+      "plague",
+      "covid",
+      "elevation",
+      "fracture",
+      "arsenic"
+     ],
+     "life": 1717,
+     "strength": 0,
+     "wisdom": 201,
+     "agility": 201,
+     "resistance": 201,
+     "science": 0,
+     "magic": 486,
+     "frequency": 100,
+     "tp": 21,
+     "mp": 6,
+     "cores": 20,
+     "ram": 20,
+     "_id": 65931,
+     "_talent": 1398
+    }
+   ]
+  },
+  {
+   "fight": 55018833,
+   "opp": [
+    {
+     "name": "AnnePtiteGoutte",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "destroyer",
+      "grenade_launcher",
+      "katana",
+      "m_laser"
+     ],
+     "chips": [
+      "rock",
+      "spark",
+      "cure",
+      "flame",
+      "stalactite",
+      "liberation",
+      "armoring",
+      "rockfall",
+      "vaccine",
+      "iceberg",
+      "regeneration",
+      "meteorite",
+      "lightning",
+      "metallic_bulb",
+      "savant_bulb",
+      "tactician_bulb"
+     ],
+     "life": 1932,
+     "strength": 506,
+     "wisdom": 0,
+     "agility": 0,
+     "resistance": 0,
+     "science": 0,
+     "magic": 0,
+     "frequency": 100,
+     "tp": 17,
+     "mp": 11,
+     "cores": 20,
+     "ram": 20,
+     "_id": 40948,
+     "_talent": 1226
+    },
+    {
+     "name": "MelusinePtiteGoutte",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "destroyer",
+      "katana",
+      "gazor",
+      "m_laser"
+     ],
+     "chips": [
+      "venom",
+      "tranquilizer",
+      "vaccine",
+      "slow_down",
+      "iceberg",
+      "regeneration",
+      "toxin",
+      "soporific",
+      "meteorite",
+      "healer_bulb",
+      "ball_and_chain",
+      "fire_bulb",
+      "plague",
+      "fracture",
+      "lightning_bulb"
+     ],
+     "life": 2054,
+     "strength": 0,
+     "wisdom": 0,
+     "agility": 0,
+     "resistance": 0,
+     "science": 0,
+     "magic": 604,
+     "frequency": 100,
+     "tp": 18,
+     "mp": 9,
+     "cores": 20,
+     "ram": 20,
+     "_id": 41559,
+     "_talent": 1354
+    },
+    {
+     "name": "JustinePtiteGoutte",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "electrisor",
+      "katana",
+      "gazor",
+      "m_laser"
+     ],
+     "chips": [
+      "venom",
+      "puny_bulb",
+      "tranquilizer",
+      "vaccine",
+      "slow_down",
+      "iceberg",
+      "regeneration",
+      "toxin",
+      "soporific",
+      "meteorite",
+      "ball_and_chain",
+      "plague",
+      "wizard_bulb",
+      "fracture",
+      "lightning_bulb"
+     ],
+     "life": 2045,
+     "strength": 0,
+     "wisdom": 0,
+     "agility": 0,
+     "resistance": 0,
+     "science": 0,
+     "magic": 605,
+     "frequency": 100,
+     "tp": 18,
+     "mp": 9,
+     "cores": 20,
+     "ram": 20,
+     "_id": 43059,
+     "_talent": 1369
+    },
+    {
+     "name": "CorinePtiteGoutte",
+     "level": 301,
+     "ai": "@expert",
+     "weapons": [
+      "electrisor",
+      "katana",
+      "gazor",
+      "m_laser"
+     ],
+     "chips": [
+      "flash",
+      "venom",
+      "puny_bulb",
+      "stalactite",
+      "liberation",
+      "tranquilizer",
+      "rockfall",
+      "slow_down",
+      "iceberg",
+      "rocky_bulb",
+      "toxin",
+      "iced_bulb",
+      "soporific",
+      "meteorite",
+      "lightning",
+      "ball_and_chain",
+      "plague",
+      "fracture"
+     ],
+     "life": 2420,
+     "strength": 435,
+     "wisdom": 0,
+     "agility": 0,
+     "resistance": 0,
+     "science": 0,
+     "magic": 450,
+     "frequency": 100,
+     "tp": 15,
+     "mp": 9,
+     "cores": 20,
+     "ram": 20,
+     "_id": 45110,
+     "_talent": 1252
+    }
+   ]
+  },
   {
    "fight": 54982764,
    "opp": [
@@ -1699,7 +3481,7 @@
      "cores": 20,
      "ram": 20,
      "_id": 65319,
-     "_talent": 1598
+     "_talent": 1613
     },
     {
      "name": "Lenny64",
@@ -1862,7 +3644,7 @@
      "cores": 8,
      "ram": 14,
      "_id": 103799,
-     "_talent": 1357
+     "_talent": 1372
     },
     {
      "name": "Psychis",
@@ -1943,7 +3725,7 @@
      "cores": 8,
      "ram": 13,
      "_id": 104153,
-     "_talent": 906
+     "_talent": 887
     }
    ]
   },
@@ -2564,7 +4346,7 @@
      "cores": 20,
      "ram": 20,
      "_id": 65655,
-     "_talent": 1591
+     "_talent": 1608
     },
     {
      "name": "DayOne",
@@ -2689,7 +4471,7 @@
      "cores": 20,
      "ram": 20,
      "_id": 61890,
-     "_talent": 1463
+     "_talent": 1448
     },
     {
      "name": "Ishouldstopprocrasti",
@@ -3080,7 +4862,7 @@
      "cores": 20,
      "ram": 20,
      "_id": 75871,
-     "_talent": 1324
+     "_talent": 1339
     },
     {
      "name": "PititBoo",
@@ -3126,7 +4908,7 @@
      "cores": 20,
      "ram": 20,
      "_id": 76014,
-     "_talent": 1408
+     "_talent": 1423
     }
    ]
   },
@@ -3272,7 +5054,7 @@
      "cores": 20,
      "ram": 20,
      "_id": 16915,
-     "_talent": 1036
+     "_talent": 1051
     },
     {
      "name": "stoock",
@@ -3465,7 +5247,7 @@
      "cores": 20,
      "ram": 20,
      "_id": 16915,
-     "_talent": 1036
+     "_talent": 1051
     },
     {
      "name": "stoock",

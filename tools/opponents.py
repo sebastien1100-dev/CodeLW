@@ -36,7 +36,7 @@ def inline(leek_id):
     return entry
 
 
-def collect(days):
+def collect(days, with_draws=False):
     hist = {}
     for x in lw.get(f"history/get-farmer-history/{lw.FARMER_ID}").get("fights", []):
         hist[x["id"]] = x
@@ -51,8 +51,8 @@ def collect(days):
         ids1 = [l["id"] if isinstance(l, dict) else l for l in x["leeks1"]]
         ids2 = [l["id"] if isinstance(l, dict) else l for l in x["leeks2"]]
         side = 1 if any(i in lw.LEEKS.values() for i in ids1) else 2
-        if x["winner"] in (0, side):
-            continue  # on ne garde que les défaites
+        if x["winner"] == side or (x["winner"] == 0 and not with_draws):
+            continue  # on garde les défaites (et les nuls si demandé)
         opp_ids = ids2 if side == 1 else ids1
         entries = []
         for i in opp_ids:
@@ -67,7 +67,7 @@ def collect(days):
     with open(OUT, "w") as f:
         json.dump({"collected": time.strftime("%Y-%m-%d %H:%M"), "days": days, "solo": solo, "teams": teams},
                   f, indent=1, ensure_ascii=False)
-    print(f"{len(solo)} adversaires solo et {len(teams)} équipes (4 contre 4) qui nous ont battus -> {OUT}")
+    print(f"{len(solo)} adversaires solo et {len(teams)} équipes (4 contre 4) -> {OUT}")
 
 
 def main():
@@ -75,8 +75,9 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("collect")
     s.add_argument("--days", type=int, default=3)
+    s.add_argument("--draws", action="store_true", help="inclure aussi les matchs nuls")
     args = p.parse_args()
-    collect(args.days)
+    collect(args.days, args.draws)
 
 
 if __name__ == "__main__":
