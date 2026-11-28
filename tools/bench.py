@@ -153,7 +153,15 @@ def real(args, ai):
         name, spec = c.split("=")
         build, _, kit = spec.partition(":")
         clones[name] = clone_entry(name, build, kit or None, ai)
-    me = lambda n: clones.get(n, {"leek": n, "ai": ai})  # noqa: E731
+    def me(n):
+        if n in clones:
+            return clones[n]
+        e = {"leek": n, "ai": ai}
+        if getattr(args, "kit", None) and n == (args.hero or n):
+            kit = dict(load("kits.json")[args.kit])
+            kit.setdefault("components", lw.loadout(lw.LEEKS[n])["components"])
+            e["loadout"] = kit
+        return e
     scenarios = []
     for seed in range(args.seed0, args.seed0 + args.seeds):
         if args.mode == "solo":
@@ -200,6 +208,7 @@ def main():
     s.add_argument("--ai", default="Opti")
     s.add_argument("--hero", choices=list(lw.LEEKS), help="mode solo : ce poireau contre tous (sinon le poireau qui a perdu)")
     s.add_argument("--clone", action="append", help="remplacer un poireau par un clone : nom=répartition[:kit]")
+    s.add_argument("--kit", help="équipement (kits.json, composants compris) pour --hero")
     s = sub.add_parser("upload")
     s.add_argument("file")
     s.add_argument("--as", dest="target", required=True, help="chemin du fichier sur Leek Wars")

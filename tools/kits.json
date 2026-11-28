@@ -794,5 +794,101 @@
    "burning",
    "metallic_bulb"
   ]
+ },
+ "kador_poire": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ],
+  "components": [
+   {
+    "index": 0,
+    "template": 406
+   },
+   {
+    "index": 1,
+    "template": 407
+   },
+   {
+    "index": 2,
+    "template": 317
+   },
+   {
+    "index": 3,
+    "template": 376
+   }
+  ]
+ },
+ "kador_ressort": {
+  "weapons": [
+   "destroyer",
+   "grenade_launcher",
+   "electrisor",
+   "m_laser"
+  ],
+  "chips": [
+   "motivation",
+   "spark",
+   "flash",
+   "puny_bulb",
+   "stalactite",
+   "liberation",
+   "rockfall",
+   "iceberg",
+   "regeneration",
+   "steroid",
+   "adrenaline",
+   "meteorite",
+   "devil_strike",
+   "healer_bulb",
+   "winged_boots",
+   "lightning",
+   "fortress",
+   "doping",
+   "burning",
+   "metallic_bulb"
+  ],
+  "components": [
+   {
+    "index": 0,
+    "template": 406
+   },
+   {
+    "index": 1,
+    "template": 407
+   },
+   {
+    "index": 2,
+    "template": 317
+   },
+   {
+    "index": 3,
+    "template": 297
+   }
+  ]
  }
 }
